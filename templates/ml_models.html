@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}ML Control Panel{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column: Training Controls -->
+    <div class="col-lg-5 mb-4">
+        <!-- Stock Selector for training -->
+        <div class="glass-card mb-4">
+            <h5 class="mb-3 text-white"><i class="bi bi-gear-fill me-2"></i>Select Active Symbol</h5>
+            <div class="mb-3">
+                <select class="form-select form-glass w-100" id="trainSymbolSelect">
+                    {% for sym in symbols %}
+                        <option value="{{ sym }}" {% if sym == 'AAPL' %}selected{% endif %}>{{ sym }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Symbol Info HUD -->
+            <div id="trainSymbolHud" class="mt-3 p-3 rounded d-none" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass);">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-secondary">Historical Span</span>
+                    <span id="trainSpan" class="small fw-semibold text-white">N/A</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="small text-secondary">Data Volume</span>
+                    <span id="trainRows" class="small fw-semibold text-white">0 rows</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-secondary">Last Close Price</span>
+                    <span id="trainClose" class="small fw-bold text-success">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Classical ML training -->
+        <div class="glass-card mb-4">
+            <h5 class="mb-3 text-white"><i class="bi bi-activity me-2"></i>Classical ML Training</h5>
+            <p class="text-secondary small">Trains Linear Regression, Random Forest, and XGBoost models. Performs sequential splits and caches performance scores in the database.</p>
+            <div class="d-grid">
+                <button class="btn btn-primary-gradient" id="trainClassicalBtn">
+                    <i class="bi bi-play-fill me-1"></i>Train Classical Pipelines
+                </button>
+            </div>
+            <!-- Interactive progress checklist -->
+            <div class="mt-3 d-none" id="classicalStepsCard">
+                <div class="p-3 training-steps-card">
+                    <h6 class="text-white mb-3"><span class="spinner-border spinner-border-sm me-2 text-primary" role="status"></span>Training Classical Pipelines</h6>
+                    <div class="training-step-item pending" id="class-step-1">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-1"></i>
+                        <span class="small text-secondary" id="class-text-1">Splitting historical dataset (Train/Val/Test)</span>
+                    </div>
+                    <div class="training-step-item pending" id="class-step-2">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-2"></i>
+                        <span class="small text-secondary" id="class-text-2">Standardizing feature vectors & lags</span>
+                    </div>
+                    <div class="training-step-item pending" id="class-step-3">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-3"></i>
+                        <span class="small text-secondary" id="class-text-3">Fitting Linear Regression (baseline)</span>
+                    </div>
+                    <div class="training-step-item pending" id="class-step-4">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-4"></i>
+                        <span class="small text-secondary" id="class-text-4">Fitting Random Forest ensemble</span>
+                    </div>
+                    <div class="training-step-item pending" id="class-step-5">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-5"></i>
+                        <span class="small text-secondary" id="class-text-5">Fitting XGBoost Regressor</span>
+                    </div>
+                    <div class="training-step-item pending" id="class-step-6">
+                        <i class="bi bi-circle text-secondary fs-5" id="class-icon-6"></i>
+                        <span class="small text-secondary" id="class-text-6">Persisting performance to database</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LSTM Deep Learning Training -->
+        <div class="glass-card">
+            <h5 class="mb-3 text-white"><i class="bi bi-cpu me-2"></i>LSTM Neural Net Training</h5>
+            <p class="text-secondary small">Fits a recurrent neural network with an LSTM layer on historical Close prices.</p>
+            
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-secondary small fw-semibold">Epochs</label>
+                    <input type="number" class="form-control form-glass" id="lstmEpochs" value="5" min="1" max="50">
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-secondary small fw-semibold">Lookback (Days)</label>
+                    <input type="number" class="form-control form-glass" id="lstmLookback" value="60" min="10" max="200">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="form-label text-secondary small fw-semibold">Batch Size</label>
+                    <select class="form-select form-glass" id="lstmBatchSize">
+                        <option value="16">16</option>
+                        <option value="32" selected>32</option>
+                        <option value="64">64</option>
+                    </select>
+                </div>
+                <div class="col-6">
+                    <label class="form-label text-secondary small fw-semibold">Optimizer</label>
+                    <select class="form-select form-glass" id="lstmOptimizer">
+                        <option value="adam" selected>Adam (Adaptive)</option>
+                        <option value="sgd">SGD (Classical)</option>
+                        <option value="rmsprop">RMSProp</option>
+                    </select>
+                </div>
+            </div>
+            <div class="d-grid">
+                <button class="btn btn-accent-gradient" id="trainLstmBtn">
+                    <i class="bi bi-cpu-fill me-1"></i>Train LSTM Network
+                </button>
+            </div>
+            <!-- Interactive progress checklist -->
+            <div class="mt-3 d-none" id="lstmStepsCard">
+                <div class="p-3 training-steps-card">
+                    <h6 class="text-white mb-3"><span class="spinner-border spinner-border-sm me-2 text-success" role="status"></span>Training Recurrent LSTM</h6>
+                    <div class="training-step-item pending" id="lstm-step-1">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-1"></i>
+                        <span class="small text-secondary" id="lstm-text-1">Loading Close price series data</span>
+                    </div>
+                    <div class="training-step-item pending" id="lstm-step-2">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-2"></i>
+                        <span class="small text-secondary" id="lstm-text-2">Scaling features using MinMaxScaler</span>
+                    </div>
+                    <div class="training-step-item pending" id="lstm-step-3">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-3"></i>
+                        <span class="small text-secondary" id="lstm-text-3">Structuring sequence datasets (lookback)</span>
+                    </div>
+                    <div class="training-step-item pending" id="lstm-step-4">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-4"></i>
+                        <span class="small text-secondary" id="lstm-text-4">Compiling Recurrent Neural Net layers</span>
+                    </div>
+                    <div class="training-step-item pending" id="lstm-step-5">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-5"></i>
+                        <span class="small text-secondary" id="lstm-text-5">Optimizing network weights (Epoch fitting)</span>
+                    </div>
+                    <div class="training-step-item pending" id="lstm-step-6">
+                        <i class="bi bi-circle text-secondary fs-5" id="lstm-icon-6"></i>
+                        <span class="small text-secondary" id="lstm-text-6">Evaluating validation loss trajectory</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Verification & Comparisons -->
+    <div class="col-lg-7">
+        <!-- Model Performance Comparison Grid -->
+        <div class="glass-card mb-4">
+            <h5 class="mb-3 text-white"><i class="bi bi-bar-chart-steps me-2"></i>Performance Leaderboard</h5>
+            <p class="text-secondary small">Compare trained models for the active stock. Ranked dynamically by $R^2$ accuracy score.</p>
+            
+            <div class="table-responsive">
+                <table class="table table-glass text-start" id="performanceTable">
+                    <thead>
+                        <tr>
+                            <th>Model Name</th>
+                            <th>MAE ($)</th>
+                            <th>RMSE ($)</th>
+                            <th>R² Score</th>
+                            <th>MAPE</th>
+                        </tr>
+                    </thead>
+                    <tbody id="performanceTableBody">
+                        <tr>
+                            <td colspan="5" class="text-center text-secondary small">No cached models found. Trigger training on the left.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Feature Significance Insights -->
+        <div class="glass-card mb-4 d-none" id="featureImportanceCard">
+            <h5 class="mb-3 text-white"><i class="bi bi-bar-chart-fill me-2"></i>AI Feature Significance Insights</h5>
+            <p class="text-secondary small">Identifies which technical indicators and price lags contributed most to the classical ML decisions.</p>
+            <div class="mb-3 d-flex align-items-center">
+                <label class="form-label text-secondary small fw-semibold m-0">Focus Model:</label>
+                <select class="form-select form-glass form-select-sm w-auto ms-2 py-1" id="importanceModelSelect">
+                    <option value="Random Forest">Random Forest</option>
+                    <option value="XGBoost">XGBoost</option>
+                </select>
+            </div>
+            <div id="plotlyFeatureImportanceChart" style="height: 350px; width: 100%;"></div>
+        </div>
+
+        <!-- LSTM Training Visualization loss chart -->
+        <div class="glass-card d-none" id="lstmChartCard">
+            <h5 class="mb-3 text-white"><i class="bi bi-eye-fill me-2"></i>LSTM Training Loss Trajectory</h5>
+            <p class="text-secondary small">Epoch-wise validation loss curve showing convergence optimization.</p>
+            <div id="plotlyLstmLossChart" style="height: 300px; width: 100%;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/ml_trainer.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AI Stock Predictor{% endblock %} - Stock Prediction Platform</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Plotly.js for interactive charting -->
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <script>
+        // Apply theme immediately to prevent flashing
+        const savedTheme = localStorage.getItem('selectedTheme') || 'dark';
+        document.body.className = 'theme-' + savedTheme;
+        
+        function changeTheme(themeName) {
+            document.body.className = 'theme-' + themeName;
+            localStorage.setItem('selectedTheme', themeName);
+            
+            // Dispatch a custom event to notify Plotly and Seaborn image loaders
+            const event = new CustomEvent('themeChanged', { detail: { theme: themeName } });
+            window.dispatchEvent(event);
+        }
+    </script>
+
+    <!-- Global Page Loader -->
+    <div id="pageLoader">
+        <span class="training-loader" style="width: 60px; height: 60px; border-width: 6px; border-bottom-color: #8b5cf6;"></span>
+        <h4 class="text-white mt-4 font-outfit" style="letter-spacing: 0.05em;">AI STOCK PLATFORM</h4>
+        <p class="text-secondary small mt-1">Initializing analysis interface...</p>
+    </div>
+    
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg glass-nav sticky-top animate-fade-in">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
+                <i class="bi bi-graph-up-arrow me-2"></i>Stock Market Prediction
+            </a>
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    {% if current_user.is_authenticated %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+                                <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'models' in request.path %}active{% endif %}" href="{{ url_for('ml.models_panel') }}">
+                                <i class="bi bi-gear-wide-connected me-1"></i>ML Control Panel
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'chatbot' in request.path %}active{% endif %}" href="{{ url_for('chatbot.chat_view') }}">
+                                <i class="bi bi-robot me-1"></i>AI Assistant
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'profile' in request.path %}active{% endif %}" href="{{ url_for('dashboard.profile') }}">
+                                <i class="bi bi-person-circle me-1"></i>Profile
+                            </a>
+                        </li>
+                        <!-- Theme Switcher Dropdown -->
+                        <li class="nav-item dropdown ms-lg-2">
+                            <a class="nav-link dropdown-toggle" href="#" id="themeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-palette-fill me-1"></i>Theme
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end border-glass" aria-labelledby="themeDropdown" style="background: rgba(13, 18, 33, 0.95); backdrop-filter: blur(10px);">
+                                <li><a class="dropdown-item" href="#" onclick="changeTheme('dark')"><i class="bi bi-moon-stars-fill text-primary me-2"></i>Glass Dark</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="changeTheme('light')"><i class="bi bi-sun-fill text-warning me-2"></i>Glass Light</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="changeTheme('cyberpunk')"><i class="bi bi-lightning-charge-fill text-info me-2"></i>Cyberpunk Neon</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="changeTheme('forest')"><i class="bi bi-tree-fill text-success me-2"></i>Forest Mint</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item ms-lg-3">
+                            <a class="btn btn-danger-red btn-sm px-3 rounded-pill" href="{{ url_for('auth.logout') }}">
+                                <i class="bi bi-box-arrow-right me-1"></i>Logout
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'login' in request.path %}active{% endif %}" href="{{ url_for('auth.login') }}">Login</a>
+                        </li>
+                        <li class="nav-item ms-lg-2">
+                            <a class="btn btn-primary-gradient btn-sm" href="{{ url_for('auth.register') }}">Sign Up</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <div class="container my-4 relative-position animate-slide-up">
+        
+        <!-- Flash Message Alerts -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="row justify-content-center">
+                    <div class="col-md-10">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show border-0 text-white" style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px);" role="alert">
+                                <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'info' %}bi-info-circle-fill{% else %}bi-exclamation-triangle-fill{% endif %} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            const loader = document.getElementById('pageLoader');
+            if (loader) {
+                setTimeout(() => {
+                    loader.classList.add('fade-out');
+                }, 300);
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

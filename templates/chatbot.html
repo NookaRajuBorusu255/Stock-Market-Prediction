@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}AI Assistant{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column: Guidelines & Capabilities -->
+    <div class="col-lg-4 mb-4">
+        <div class="glass-card mb-4">
+            <h5 class="mb-3 text-white"><i class="bi bi-info-circle-fill text-primary me-2"></i>Assistant Capabilities</h5>
+            <ul class="text-secondary small ps-3">
+                <li class="mb-2">**Concept Explanations**: Ask "What is RSI?", "Explain LSTM", "How does XGBoost regression work?" to get full algorithmic descriptions.</li>
+                <li class="mb-2">**Quantitative Reviews**: Type a symbol (e.g. "AAPL") or "Analyze AADR" to parse latest SMA, RSI, and MACD indicators.</li>
+                <li class="mb-2">**Predictive Summaries**: Request forecasting interpretations for trained configurations.</li>
+            </ul>
+        </div>
+        
+        <div class="glass-card">
+            <h5 class="mb-3 text-white"><i class="bi bi-sliders me-2"></i>Active Context</h5>
+            <p class="small mb-3" style="color: #cbd5e1; line-height: 1.45;">Set the active stock symbol context. Queries referencing "the stock", "price details", or "its indicators" will analyze this symbol.</p>
+            <div class="mb-3">
+                <label class="form-label small fw-semibold" style="color: #f1f5f9;">Focus Symbol</label>
+                <select class="form-select form-glass w-100" id="chatSymbolSelect">
+                    <option value="" selected>None</option>
+                    <!-- Load list dynamically using JS on startup -->
+                </select>
+            </div>
+            
+            <!-- Stock Status HUD -->
+            <div id="chatStockHud" class="mb-3 d-none p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass);">
+                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom" style="border-bottom-color: var(--border-glass) !important;">
+                    <span class="fw-bold text-white" id="hudSymbol">AAPL</span>
+                    <span class="small fw-semibold" id="hudPrice" style="color: #f8fafc;">$0.00</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small" style="color: #94a3b8;">RSI (14)</span>
+                    <span id="hudRsi" class="metric-badge py-0.5 px-2" style="font-size: 0.7rem;">N/A</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small" style="color: #94a3b8;">MACD state</span>
+                    <span id="hudMacd" class="metric-badge py-0.5 px-2" style="font-size: 0.7rem;">N/A</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small" style="color: #94a3b8;">Active Model</span>
+                    <span id="hudActiveModel" class="metric-badge py-0.5 px-2 badge-neutral" style="font-size: 0.7rem;">None</span>
+                </div>
+            </div>
+
+            <div class="small p-2 rounded mb-3" style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-glass); color: #94a3b8;">
+                <i class="bi bi-lightbulb me-1"></i>Configure a `GEMINI_API_KEY` in your `.env` to unlock advanced generative capabilities.
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Chat Interface -->
+    <div class="col-lg-8">
+        <div class="glass-card d-flex flex-column" style="height: 600px;">
+            <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom" style="border-bottom-color: var(--border-glass) !important;">
+                <h5 class="m-0 text-white"><i class="bi bi-robot text-primary me-2"></i>Intelligent Stock Assistant</h5>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 text-white border-danger-subtle" id="clearChatBtn" style="font-size: 0.75rem; background: rgba(239, 68, 68, 0.05);" title="Clear Chat History">
+                        <i class="bi bi-trash3 me-1"></i>Clear History
+                    </button>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small" id="apiModeBadge">Local Mode</span>
+                </div>
+            </div>
+
+            <!-- Chat message container -->
+            <div class="chat-container flex-grow-1" id="chatContainer">
+                <!-- Welcome Message -->
+                <div class="d-flex mb-3">
+                    <div class="message-bubble message-bot">
+                        Hello! I am your AI-Powered Stock Assistant. I can describe machine learning algorithms (LSTM, Random Forest, XGBoost), technical indicators (RSI, MACD, SMAs), and analyze local stock datasets.
+                        <br><br>
+                        Try asking: **"What is LSTM?"** or **"Analyze AAPL price"**.
+                    </div>
+                </div>
+            </div>
+
+            <!-- User input action block -->
+            <div class="mt-3 pt-3 border-top" style="border-top-color: var(--border-glass) !important;">
+                <!-- Quick Suggestion Pills -->
+                <div class="d-flex flex-wrap gap-2 mb-3" id="quickPillsContainer">
+                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-analyze" data-action="analyze" style="font-size: 0.75rem;">
+                        <i class="bi bi-graph-up me-1"></i>Analyze Stock
+                    </button>
+                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-predict" data-action="predict" style="font-size: 0.75rem;">
+                        <i class="bi bi-lightning-charge me-1"></i>Get Prediction
+                    </button>
+                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-sentiment" data-action="sentiment" style="font-size: 0.75rem;">
+                        <i class="bi bi-newspaper me-1"></i>News & Sentiment
+                    </button>
+                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-lstm" data-action="lstm" style="font-size: 0.75rem;">
+                        <i class="bi bi-question-circle me-1"></i>Explain LSTM
+                    </button>
+                </div>
+                <form id="chatForm">
+                    <div class="input-group">
+                        <input type="text" class="form-control form-glass py-3" id="userMessage" placeholder="Ask a question about stocks or ML..." autocomplete="off" required>
+                        <button class="btn btn-primary-gradient px-4" type="submit" id="sendBtn">
+                            <i class="bi bi-send-fill"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+{% endblock %}

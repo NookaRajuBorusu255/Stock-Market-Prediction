@@ -1,0 +1,30 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Flask / SQLite database
+instance/
+*.db
+
+# ML models
+models/*.joblib
+models/*.pkl
+models/*.h5
+
+# User uploads / dataset storage
+uploads/
+
+# Environment variables
+.env
+
+# Editor settings
+.vscode/
+.idea/
+.DS_Store
