@@ -10,6 +10,7 @@ import joblib
 from config import Config
 from services.data_service import get_stock_data
 from database.database_helper import save_model_performance
+from database.models import ModelPerformance
 
 def prepare_ml_data(df):
     """
@@ -159,6 +160,3 @@ def load_ml_model_and_predict(symbol, model_name):
         confidence = 75.0  # Default fallback if performance record is missing
         
     return predicted_val, float(confidence)
-
-# Keep imports fresh for SQLAlchemy models referenced
-from database.models import ModelPerformance

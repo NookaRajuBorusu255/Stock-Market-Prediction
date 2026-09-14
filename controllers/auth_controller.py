@@ -1,3 +1,4 @@
+from urllib.parse import urlparse
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
 from database.database_helper import get_user_by_username, get_user_by_email, create_user
@@ -59,7 +60,10 @@ def login():
         login_user(user, remember=remember)
         next_page = request.args.get('next')
         flash(f"Welcome back, {user.username}!", "success")
-        return redirect(next_page) if next_page else redirect(url_for('dashboard.index'))
+        # Validate next_page is a relative URL to prevent open redirect attacks
+        if next_page and urlparse(next_page).netloc == '':
+            return redirect(next_page)
+        return redirect(url_for('dashboard.index'))
         
     return render_template('login.html')
 

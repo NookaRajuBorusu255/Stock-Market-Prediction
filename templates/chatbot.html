@@ -1,113 +1,301 @@
 {% extends "base.html" %}
 
-{% block title %}AI Assistant{% endblock %}
+{% block title %}AI Assistant | EquityAI{% endblock %}
 
 {% block content %}
-<div class="row">
-    <!-- Left Column: Guidelines & Capabilities -->
-    <div class="col-lg-4 mb-4">
-        <div class="glass-card mb-4">
-            <h5 class="mb-3 text-white"><i class="bi bi-info-circle-fill text-primary me-2"></i>Assistant Capabilities</h5>
-            <ul class="text-secondary small ps-3">
-                <li class="mb-2">**Concept Explanations**: Ask "What is RSI?", "Explain LSTM", "How does XGBoost regression work?" to get full algorithmic descriptions.</li>
-                <li class="mb-2">**Quantitative Reviews**: Type a symbol (e.g. "AAPL") or "Analyze AADR" to parse latest SMA, RSI, and MACD indicators.</li>
-                <li class="mb-2">**Predictive Summaries**: Request forecasting interpretations for trained configurations.</li>
-            </ul>
+<!-- ── Page Header ── -->
+<div class="d-flex align-items-center justify-content-between mb-4 px-1">
+    <div>
+        <h4 class="text-white m-0 fw-bold"><i class="bi bi-robot me-2 text-primary"></i>AI Stock Assistant
+            <span class="ms-2 badge rounded-pill" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;font-size:0.72rem;vertical-align:middle;">Advanced</span>
+        </h4>
+        <p class="text-muted m-0" style="font-size:0.82rem;">Powered by local intelligence + optional Gemini generative AI</p>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <!-- Live market pulse -->
+        <div class="d-none d-md-flex align-items-center gap-2 px-3 py-2 rounded-3"
+             style="background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2);font-size:0.75rem;">
+            <span class="nav-status-dot"></span>
+            <span class="text-primary fw-semibold">Live Data</span>
         </div>
-        
-        <div class="glass-card">
-            <h5 class="mb-3 text-white"><i class="bi bi-sliders me-2"></i>Active Context</h5>
-            <p class="small mb-3" style="color: #cbd5e1; line-height: 1.45;">Set the active stock symbol context. Queries referencing "the stock", "price details", or "its indicators" will analyze this symbol.</p>
-            <div class="mb-3">
-                <label class="form-label small fw-semibold" style="color: #f1f5f9;">Focus Symbol</label>
-                <select class="form-select form-glass w-100" id="chatSymbolSelect">
-                    <option value="" selected>None</option>
-                    <!-- Load list dynamically using JS on startup -->
-                </select>
+        <span class="badge px-3 py-2 rounded-pill" id="apiModeBadge"
+              style="background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.25);color:#6ee7b7;font-size:0.78rem;">
+            <i class="bi bi-circle-fill me-1" style="font-size:0.5rem;"></i>Local Mode
+        </span>
+    </div>
+</div>
+
+<div class="row g-4">
+<!-- ════════════════════════════════════════════
+     LEFT SIDEBAR (4 cols)
+════════════════════════════════════════════ -->
+<div class="col-lg-4 mb-lg-0">
+
+    <!-- ── Focus Symbol ── -->
+    <div class="glass-card mb-3">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0 text-white fw-bold" style="font-size:0.95rem;">
+                <i class="bi bi-sliders me-2 text-primary"></i>Active Context
+            </h5>
+            <button class="btn btn-xs rounded-pill px-2" id="chatRefreshBtn"
+                    style="font-size:0.7rem;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.2);color:#93c5fd;"
+                    title="Refresh live data">
+                <i class="bi bi-arrow-clockwise"></i>
+            </button>
+        </div>
+        <div class="mb-3">
+            <label class="form-label text-secondary fw-semibold mb-1" style="font-size:0.72rem;text-transform:uppercase;letter-spacing:.05em;">Focus Symbol</label>
+            <select class="form-select form-glass w-100" id="chatSymbolSelect">
+                <option value="" selected>— None —</option>
+            </select>
+        </div>
+
+        <!-- ── LIVE Stock HUD ── -->
+        <div id="chatStockHud" class="d-none">
+            <!-- Price hero -->
+            <div class="p-3 rounded-3 mb-2" style="background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.15);">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                    <span class="fw-bold text-white" id="hudSymbol" style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;">—</span>
+                    <span class="fw-bold" id="hudPrice" style="font-family:'JetBrains Mono',monospace;font-size:0.95rem;"></span>
+                </div>
+                <div id="hudChange" style="font-size:0.75rem;"></div>
+                <!-- Mini Sparkline -->
+                <canvas id="sparklineCanvas" height="40" style="width:100%;margin-top:8px;border-radius:4px;"></canvas>
             </div>
-            
-            <!-- Stock Status HUD -->
-            <div id="chatStockHud" class="mb-3 d-none p-3 rounded" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-glass);">
-                <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom" style="border-bottom-color: var(--border-glass) !important;">
-                    <span class="fw-bold text-white" id="hudSymbol">AAPL</span>
-                    <span class="small fw-semibold" id="hudPrice" style="color: #f8fafc;">$0.00</span>
+
+            <!-- Indicator Row -->
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <div class="p-2 rounded-3 text-center" style="background:rgba(255,255,255,0.025);border:1px solid var(--border-glass);">
+                        <div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;">RSI (14)</div>
+                        <div id="hudRsi" class="fw-bold mt-1" style="font-size:0.88rem;font-family:'JetBrains Mono',monospace;">—</div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small" style="color: #94a3b8;">RSI (14)</span>
-                    <span id="hudRsi" class="metric-badge py-0.5 px-2" style="font-size: 0.7rem;">N/A</span>
+                <div class="col-6">
+                    <div class="p-2 rounded-3 text-center" style="background:rgba(255,255,255,0.025);border:1px solid var(--border-glass);">
+                        <div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;">MACD</div>
+                        <div id="hudMacd" class="fw-bold mt-1" style="font-size:0.75rem;">—</div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span class="small" style="color: #94a3b8;">MACD state</span>
-                    <span id="hudMacd" class="metric-badge py-0.5 px-2" style="font-size: 0.7rem;">N/A</span>
+                <div class="col-6">
+                    <div class="p-2 rounded-3 text-center" style="background:rgba(255,255,255,0.025);border:1px solid var(--border-glass);">
+                        <div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;">SMA 20</div>
+                        <div id="hudSma20" class="fw-bold mt-1" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;">—</div>
+                    </div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center">
-                    <span class="small" style="color: #94a3b8;">Active Model</span>
-                    <span id="hudActiveModel" class="metric-badge py-0.5 px-2 badge-neutral" style="font-size: 0.7rem;">None</span>
+                <div class="col-6">
+                    <div class="p-2 rounded-3 text-center" style="background:rgba(255,255,255,0.025);border:1px solid var(--border-glass);">
+                        <div class="text-muted" style="font-size:0.65rem;text-transform:uppercase;letter-spacing:.05em;">Volatility</div>
+                        <div id="hudVol" class="fw-bold mt-1" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;">—</div>
+                    </div>
                 </div>
             </div>
 
-            <div class="small p-2 rounded mb-3" style="background: rgba(255, 255, 255, 0.02); border: 1px dashed var(--border-glass); color: #94a3b8;">
-                <i class="bi bi-lightbulb me-1"></i>Configure a `GEMINI_API_KEY` in your `.env` to unlock advanced generative capabilities.
+            <!-- Signal Badge Row -->
+            <div class="d-flex gap-2 flex-wrap mb-2" id="hudSignalRow">
+                <span class="metric-badge badge-neutral" id="hudRsiSignal" style="font-size:0.7rem;">RSI —</span>
+                <span class="metric-badge badge-neutral" id="hudMacdSignal" style="font-size:0.7rem;">MACD —</span>
+                <span class="metric-badge badge-neutral" id="hudActiveModel" style="font-size:0.7rem;">Model —</span>
+            </div>
+
+            <!-- Last updated -->
+            <div class="text-muted text-end" id="hudLastUpdated" style="font-size:0.65rem;"></div>
+        </div>
+
+        <!-- Gemini hint -->
+        <div class="p-3 rounded-3 mt-3" style="background:rgba(245,158,11,0.06);border:1px dashed rgba(245,158,11,0.25);">
+            <p class="text-muted m-0" style="font-size:0.78rem;line-height:1.5;">
+                <i class="bi bi-lightbulb-fill text-warning me-1"></i>
+                Add a <code class="text-info">GEMINI_API_KEY</code> to <code class="text-info">.env</code> to unlock generative AI.
+            </p>
+        </div>
+    </div>
+
+    <!-- ── Capabilities ── -->
+    <div class="glass-card mb-3">
+        <h5 class="mb-3 text-white fw-bold" style="font-size:0.95rem;">
+            <i class="bi bi-info-circle-fill me-2 text-primary"></i>Capabilities
+        </h5>
+        <div class="d-flex flex-column gap-2">
+            <div class="capability-row">
+                <div class="cap-icon" style="background:rgba(59,130,246,0.12);"><i class="bi bi-graph-up text-primary" style="font-size:0.85rem;"></i></div>
+                <div><div class="text-white fw-semibold" style="font-size:0.82rem;">Quantitative Review</div>
+                <div class="text-secondary" style="font-size:0.75rem;">"Analyze AAPL" → RSI, MACD, SMA signals</div></div>
+            </div>
+            <div class="capability-row">
+                <div class="cap-icon" style="background:rgba(139,92,246,0.12);"><i class="bi bi-cpu" style="font-size:0.85rem;color:#a78bfa;"></i></div>
+                <div><div class="text-white fw-semibold" style="font-size:0.82rem;">Concept Explanations</div>
+                <div class="text-secondary" style="font-size:0.75rem;">"What is LSTM?" — full algorithmic descriptions</div></div>
+            </div>
+            <div class="capability-row">
+                <div class="cap-icon" style="background:rgba(16,185,129,0.12);"><i class="bi bi-newspaper text-success" style="font-size:0.85rem;"></i></div>
+                <div><div class="text-white fw-semibold" style="font-size:0.82rem;">Sentiment Analysis</div>
+                <div class="text-secondary" style="font-size:0.75rem;">"Show AAPL sentiment" → signal scoring</div></div>
+            </div>
+            <div class="capability-row">
+                <div class="cap-icon" style="background:rgba(245,158,11,0.12);"><i class="bi bi-lightning-charge-fill text-warning" style="font-size:0.85rem;"></i></div>
+                <div><div class="text-white fw-semibold" style="font-size:0.82rem;">Price Prediction</div>
+                <div class="text-secondary" style="font-size:0.75rem;">"Predict TSLA" → XGBoost/LSTM forecast</div></div>
+            </div>
+            <div class="capability-row">
+                <div class="cap-icon" style="background:rgba(34,211,238,0.12);"><i class="bi bi-bar-chart-fill" style="font-size:0.85rem;color:#22d3ee;"></i></div>
+                <div><div class="text-white fw-semibold" style="font-size:0.82rem;">Compare Models</div>
+                <div class="text-secondary" style="font-size:0.75rem;">"Compare AAPL models" → leaderboard table</div></div>
             </div>
         </div>
     </div>
 
-    <!-- Right Column: Live Chat Interface -->
-    <div class="col-lg-8">
-        <div class="glass-card d-flex flex-column" style="height: 600px;">
-            <div class="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom" style="border-bottom-color: var(--border-glass) !important;">
-                <h5 class="m-0 text-white"><i class="bi bi-robot text-primary me-2"></i>Intelligent Stock Assistant</h5>
+    <!-- ── Keyboard Shortcuts ── -->
+    <div class="glass-card" style="padding:14px 18px;">
+        <h5 class="mb-2 text-white fw-bold" style="font-size:0.85rem;"><i class="bi bi-keyboard me-2 text-muted"></i>Shortcuts</h5>
+        <div class="d-flex justify-content-between mb-1">
+            <span class="text-secondary" style="font-size:0.75rem;"><kbd class="kbd-mini">Enter</kbd> Send message</span>
+            <span class="text-secondary" style="font-size:0.75rem;"><kbd class="kbd-mini">↑</kbd> Last message</span>
+        </div>
+        <div class="d-flex justify-content-between">
+            <span class="text-secondary" style="font-size:0.75rem;"><kbd class="kbd-mini">Shift+Enter</kbd> New line</span>
+            <span class="text-secondary" style="font-size:0.75rem;"><kbd class="kbd-mini">Esc</kbd> Clear input</span>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     CHAT PANEL (8 cols)
+════════════════════════════════════════════ -->
+<div class="col-lg-8">
+    <div class="glass-card d-flex flex-column" style="height:680px;">
+
+        <!-- Chat Header -->
+        <div class="d-flex align-items-center justify-content-between pb-3 mb-3"
+             style="border-bottom:1px solid var(--border-glass);">
+            <div class="d-flex align-items-center gap-2">
+                <div class="chat-avatar chat-avatar-bot" style="width:36px;height:36px;">
+                    <i class="bi bi-robot" style="font-size:0.9rem;"></i>
+                </div>
+                <div>
+                    <div class="text-white fw-semibold" style="font-size:0.9rem;">EquityAI Assistant</div>
+                    <div class="text-muted" style="font-size:0.7rem;">
+                        <span class="nav-status-dot" style="width:6px;height:6px;"></span> Online &nbsp;·&nbsp;
+                        <span id="msgCount" style="font-size:0.68rem;">0 messages</span>
+                    </div>
+                </div>
+            </div>
+            <div class="d-flex align-items-center gap-2">
+                <!-- Live refresh toggle -->
+                <button class="btn btn-sm rounded-pill px-3" id="liveRefreshToggle" type="button"
+                        title="Auto-refresh stock data every 30s"
+                        style="font-size:0.72rem;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.2);color:#6ee7b7;">
+                    <i class="bi bi-reception-4 me-1"></i>Live
+                </button>
+                <button class="btn btn-sm rounded-pill px-3" id="scrollLockBtn" type="button"
+                        title="Toggle auto-scroll"
+                        style="font-size:0.72rem;background:rgba(99,102,241,0.07);border:1px solid rgba(99,102,241,0.2);color:#a5b4fc;">
+                    <i class="bi bi-arrow-down-circle me-1"></i>Scroll
+                </button>
+                <button class="btn btn-sm rounded-pill px-3" id="clearChatBtn"
+                        style="font-size:0.72rem;background:rgba(239,68,68,0.07);border:1px solid rgba(239,68,68,0.2);color:#f87171;">
+                    <i class="bi bi-trash3 me-1"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Messages -->
+        <div class="chat-container flex-grow-1" id="chatContainer">
+            <div class="d-flex align-items-end gap-2 mb-3">
+                <div class="chat-avatar chat-avatar-bot" style="width:28px;height:28px;font-size:0.65rem;">AI</div>
+                <div class="message-bubble message-bot">
+                    Hello! I'm your <strong>EquityAI Stock Assistant</strong>.<br>
+                    I analyze LSTM, Random Forest, XGBoost models, technical indicators (RSI, MACD, SMAs), and local datasets.<br><br>
+                    <strong>Select a symbol on the left</strong> to get live price data in context, then try:<br>
+                    <strong>"Analyze AAPL"</strong> · <strong>"Predict TSLA price"</strong> · <strong>"Compare models"</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="mt-3 pt-3" style="border-top:1px solid var(--border-glass);">
+            <!-- Quick Suggestion Pills -->
+            <div class="d-flex flex-wrap gap-2 mb-3" id="quickPillsContainer">
+                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-analyze" data-action="analyze">
+                    <i class="bi bi-graph-up me-1"></i>Analyze Stock
+                </button>
+                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-predict" data-action="predict">
+                    <i class="bi bi-lightning-charge me-1"></i>Get Prediction
+                </button>
+                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-sentiment" data-action="sentiment">
+                    <i class="bi bi-newspaper me-1"></i>Sentiment
+                </button>
+                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-lstm" data-action="lstm">
+                    <i class="bi bi-question-circle me-1"></i>Explain LSTM
+                </button>
+                <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-compare" data-action="compare"
+                        style="font-size:0.75rem;border:1px solid rgba(34,211,238,0.3);color:#67e8f9;background:rgba(34,211,238,0.06);">
+                    <i class="bi bi-bar-chart-steps me-1"></i>Compare Models
+                </button>
+            </div>
+            <form id="chatForm">
                 <div class="d-flex align-items-center gap-2">
-                    <button class="btn btn-outline-danger btn-sm rounded-pill px-2.5 py-1 text-white border-danger-subtle" id="clearChatBtn" style="font-size: 0.75rem; background: rgba(239, 68, 68, 0.05);" title="Clear Chat History">
-                        <i class="bi bi-trash3 me-1"></i>Clear History
-                    </button>
-                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-2 small" id="apiModeBadge">Local Mode</span>
-                </div>
-            </div>
-
-            <!-- Chat message container -->
-            <div class="chat-container flex-grow-1" id="chatContainer">
-                <!-- Welcome Message -->
-                <div class="d-flex mb-3">
-                    <div class="message-bubble message-bot">
-                        Hello! I am your AI-Powered Stock Assistant. I can describe machine learning algorithms (LSTM, Random Forest, XGBoost), technical indicators (RSI, MACD, SMAs), and analyze local stock datasets.
-                        <br><br>
-                        Try asking: **"What is LSTM?"** or **"Analyze AAPL price"**.
+                    <div class="flex-grow-1 position-relative">
+                        <input type="text" class="form-control form-glass py-3" id="userMessage"
+                               placeholder="Ask about stocks, ML models, indicators, predictions…"
+                               autocomplete="off" required maxlength="500">
+                        <span class="position-absolute text-muted" id="charCounter"
+                              style="bottom:10px;right:12px;font-size:0.65rem;pointer-events:none;">0/500</span>
                     </div>
+                    <button class="btn btn-primary-gradient px-4 py-3" type="submit" id="sendBtn"
+                            style="min-width:52px;" title="Send (Enter)">
+                        <i class="bi bi-send-fill"></i>
+                    </button>
                 </div>
-            </div>
+                <div class="text-muted mt-1" style="font-size:0.7rem;">
+                    <kbd class="kbd-mini">Enter</kbd> send &nbsp;·&nbsp;
+                    <kbd class="kbd-mini">Shift+Enter</kbd> new line &nbsp;·&nbsp;
+                    <kbd class="kbd-mini">↑</kbd> last message &nbsp;·&nbsp;
+                    <kbd class="kbd-mini">Esc</kbd> clear
+                </div>
+            </form>
+        </div>
 
-            <!-- User input action block -->
-            <div class="mt-3 pt-3 border-top" style="border-top-color: var(--border-glass) !important;">
-                <!-- Quick Suggestion Pills -->
-                <div class="d-flex flex-wrap gap-2 mb-3" id="quickPillsContainer">
-                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-analyze" data-action="analyze" style="font-size: 0.75rem;">
-                        <i class="bi bi-graph-up me-1"></i>Analyze Stock
-                    </button>
-                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-predict" data-action="predict" style="font-size: 0.75rem;">
-                        <i class="bi bi-lightning-charge me-1"></i>Get Prediction
-                    </button>
-                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-sentiment" data-action="sentiment" style="font-size: 0.75rem;">
-                        <i class="bi bi-newspaper me-1"></i>News & Sentiment
-                    </button>
-                    <button type="button" class="btn btn-xs rounded-pill px-3 py-1 quick-pill-btn pill-lstm" data-action="lstm" style="font-size: 0.75rem;">
-                        <i class="bi bi-question-circle me-1"></i>Explain LSTM
+    </div>
+</div>
+</div>
+{% endblock %}
+
+<!-- Clear Chat Confirmation Modal -->
+<div class="modal fade" id="clearChatConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content modal-glass">
+            <div class="modal-body p-4 text-center">
+                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
+                     style="width:52px;height:52px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);">
+                    <i class="bi bi-trash3-fill" style="color:#f87171;font-size:1.3rem;"></i>
+                </div>
+                <h6 class="text-white fw-bold mb-1">Clear Chat History?</h6>
+                <p class="text-muted mb-4" style="font-size:0.82rem;">All messages will be permanently deleted.</p>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm flex-grow-1 py-2"
+                            style="background:rgba(255,255,255,0.05);border:1px solid var(--border-glass);color:#cbd5e1;font-size:0.82rem;"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-sm flex-grow-1 py-2" id="confirmClearChatBtn"
+                            style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:#f87171;font-size:0.82rem;">
+                        <i class="bi bi-trash3 me-1"></i>Delete All
                     </button>
                 </div>
-                <form id="chatForm">
-                    <div class="input-group">
-                        <input type="text" class="form-control form-glass py-3" id="userMessage" placeholder="Ask a question about stocks or ML..." autocomplete="off" required>
-                        <button class="btn btn-primary-gradient px-4" type="submit" id="sendBtn">
-                            <i class="bi bi-send-fill"></i>
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+<script>
+// Character counter
+document.getElementById('userMessage').addEventListener('input', function() {
+    document.getElementById('charCounter').textContent = `${this.value.length}/500`;
+});
+// Scroll lock visual state
+document.getElementById('scrollLockBtn').addEventListener('click', function() {
+    this.classList.toggle('active');
+});
+</script>
 {% endblock %}

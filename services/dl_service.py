@@ -58,9 +58,11 @@ def train_lstm_model(symbol, lookback=60, epochs=5, batch_size=32):
 
         close_prices = df['Close'].values.reshape(-1, 1)
 
-        # Scale data
+        # Fit scaler only on training portion to prevent data leakage
+        raw_split_idx = int(len(close_prices) * 0.8)
         scaler = MinMaxScaler(feature_range=(0, 1))
-        scaled_data = scaler.fit_transform(close_prices)
+        scaler.fit(close_prices[:raw_split_idx])
+        scaled_data = scaler.transform(close_prices)
 
         # Save the fitted scaler
         os.makedirs(Config.MODELS_FOLDER, exist_ok=True)
@@ -158,8 +160,13 @@ def train_lstm_model(symbol, lookback=60, epochs=5, batch_size=32):
         df = df.iloc[-1000:].reset_index(drop=True)
 
     close_prices = df['Close'].values.reshape(-1, 1)
+
+    # Compute train/test split on raw data BEFORE fitting scaler to prevent data leakage.
+    # The scaler must only be fit on training data, not the full series.
+    raw_split_idx = int(len(close_prices) * 0.8)
     scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_data = scaler.fit_transform(close_prices)
+    scaler.fit(close_prices[:raw_split_idx])
+    scaled_data = scaler.transform(close_prices)
 
     os.makedirs(Config.MODELS_FOLDER, exist_ok=True)
     scaler_path = os.path.join(Config.MODELS_FOLDER, f"{symbol.lower()}_lstm_scaler.joblib")

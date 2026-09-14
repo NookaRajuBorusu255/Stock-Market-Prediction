@@ -124,17 +124,23 @@ def generate_pdf_report(symbol):
                 Paragraph("Latest session close price", table_cell_style)
             ],
             [
-                Paragraph("RSI (14)", table_cell_style), 
+                Paragraph("RSI (14)", table_cell_style),
                 Paragraph(f"{last_row['RSI']:.2f}" if not pd.isna(last_row['RSI']) else "N/A", table_cell_style),
                 Paragraph(
-                    "Oversold (<30)" if last_row['RSI'] < 30 else ("Overbought (>70)" if last_row['RSI'] > 70 else "Neutral range (30-70)"), 
+                    "Oversold (<30)" if (not pd.isna(last_row['RSI']) and last_row['RSI'] < 30)
+                    else ("Overbought (>70)" if (not pd.isna(last_row['RSI']) and last_row['RSI'] > 70)
+                    else "Neutral range (30-70)"),
                     table_cell_style
                 )
             ],
             [
-                Paragraph("MACD", table_cell_style), 
+                Paragraph("MACD", table_cell_style),
                 Paragraph(f"{last_row['MACD']:.4f}" if not pd.isna(last_row['MACD']) else "N/A", table_cell_style),
-                Paragraph("Bullish Crossover" if last_row['MACD'] > last_row['MACD_Signal'] else "Bearish Crossunder", table_cell_style)
+                Paragraph(
+                    "Bullish Crossover" if (not pd.isna(last_row['MACD']) and not pd.isna(last_row['MACD_Signal']) and last_row['MACD'] > last_row['MACD_Signal'])
+                    else "Bearish Crossunder",
+                    table_cell_style
+                )
             ],
             [
                 Paragraph("20-Day SMA", table_cell_style), 

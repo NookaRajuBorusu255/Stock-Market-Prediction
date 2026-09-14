@@ -3,55 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AI Stock Predictor{% endblock %} - Stock Prediction Platform</title>
-    
+    <title>{% block title %}AI Stock Predictor{% endblock %} — EquityAI Platform</title>
+
+    <!-- NProgress top-bar loader -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.css">
+
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+
     <!-- Custom Style Sheet -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v='2.0') }}">
+
     <!-- Plotly.js for interactive charting -->
     <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
-    
+
     {% block extra_head %}{% endblock %}
 </head>
 <body>
     <script>
-        // Apply theme immediately to prevent flashing
+        // Apply theme immediately to prevent flash
         const savedTheme = localStorage.getItem('selectedTheme') || 'dark';
         document.body.className = 'theme-' + savedTheme;
-        
+
         function changeTheme(themeName) {
             document.body.className = 'theme-' + themeName;
             localStorage.setItem('selectedTheme', themeName);
-            
-            // Dispatch a custom event to notify Plotly and Seaborn image loaders
-            const event = new CustomEvent('themeChanged', { detail: { theme: themeName } });
-            window.dispatchEvent(event);
+            window.dispatchEvent(new CustomEvent('themeChanged', { detail: { theme: themeName } }));
         }
     </script>
 
     <!-- Global Page Loader -->
     <div id="pageLoader">
-        <span class="training-loader" style="width: 60px; height: 60px; border-width: 6px; border-bottom-color: #8b5cf6;"></span>
-        <h4 class="text-white mt-4 font-outfit" style="letter-spacing: 0.05em;">AI STOCK PLATFORM</h4>
-        <p class="text-secondary small mt-1">Initializing analysis interface...</p>
+        <span class="training-loader" style="width: 64px; height: 64px; border-width: 5px;"></span>
+        <div class="loader-logo mt-4">EQUITY AI</div>
+        <p class="text-secondary small mt-1" style="font-size: 0.8rem; letter-spacing: 0.06em;">INITIALIZING PLATFORM</p>
     </div>
-    
+
+    <!-- Live Ticker Strip -->
+    <div class="ticker-strip d-none d-lg-block" id="tickerStrip">
+        <div class="ticker-track" id="tickerTrack">
+            <!-- Duplicated for seamless loop — filled by JS -->
+            <span class="ticker-item"><span class="ticker-sym">AAPL</span> <span class="ticker-up">▲ 182.45</span> <span class="text-muted">+1.2%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">MSFT</span> <span class="ticker-up">▲ 415.32</span> <span class="text-muted">+0.8%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">GOOGL</span> <span class="ticker-dn">▼ 171.88</span> <span class="text-muted">−0.4%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">AMZN</span> <span class="ticker-up">▲ 193.21</span> <span class="text-muted">+1.5%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">TSLA</span> <span class="ticker-dn">▼ 177.64</span> <span class="text-muted">−2.1%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">NVDA</span> <span class="ticker-up">▲ 875.31</span> <span class="text-muted">+3.4%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">META</span> <span class="ticker-up">▲ 534.92</span> <span class="text-muted">+0.6%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">BRK.B</span> <span class="ticker-up">▲ 406.18</span> <span class="text-muted">+0.3%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">JPM</span> <span class="ticker-dn">▼ 199.47</span> <span class="text-muted">−0.2%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">V</span> <span class="ticker-up">▲ 279.55</span> <span class="text-muted">+0.7%</span></span>
+            <!-- Duplicate for seamless scroll -->
+            <span class="ticker-item"><span class="ticker-sym">AAPL</span> <span class="ticker-up">▲ 182.45</span> <span class="text-muted">+1.2%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">MSFT</span> <span class="ticker-up">▲ 415.32</span> <span class="text-muted">+0.8%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">GOOGL</span> <span class="ticker-dn">▼ 171.88</span> <span class="text-muted">−0.4%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">AMZN</span> <span class="ticker-up">▲ 193.21</span> <span class="text-muted">+1.5%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">TSLA</span> <span class="ticker-dn">▼ 177.64</span> <span class="text-muted">−2.1%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">NVDA</span> <span class="ticker-up">▲ 875.31</span> <span class="text-muted">+3.4%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">META</span> <span class="ticker-up">▲ 534.92</span> <span class="text-muted">+0.6%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">BRK.B</span> <span class="ticker-up">▲ 406.18</span> <span class="text-muted">+0.3%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">JPM</span> <span class="ticker-dn">▼ 199.47</span> <span class="text-muted">−0.2%</span></span>
+            <span class="ticker-item"><span class="ticker-sym">V</span> <span class="ticker-up">▲ 279.55</span> <span class="text-muted">+0.7%</span></span>
+        </div>
+    </div>
+
     <!-- Navigation Bar -->
-    <nav class="navbar navbar-expand-lg glass-nav sticky-top animate-fade-in">
+    <nav class="navbar navbar-expand-lg glass-nav sticky-top animate-fade-in" id="mainNav">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('dashboard.index') }}">
-                <i class="bi bi-graph-up-arrow me-2"></i>Stock Market Prediction
+                <i class="bi bi-graph-up-arrow"></i>EquityAI
             </a>
-            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <i class="bi bi-list fs-3"></i>
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"
+                    style="color: var(--text-secondary);">
+                <i class="bi bi-list fs-4"></i>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto align-items-center">
+                <ul class="navbar-nav ms-auto align-items-center gap-1">
                     {% if current_user.is_authenticated %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
@@ -60,7 +90,7 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link {% if 'models' in request.path %}active{% endif %}" href="{{ url_for('ml.models_panel') }}">
-                                <i class="bi bi-gear-wide-connected me-1"></i>ML Control Panel
+                                <i class="bi bi-cpu me-1"></i>ML Studio
                             </a>
                         </li>
                         <li class="nav-item">
@@ -73,29 +103,64 @@
                                 <i class="bi bi-person-circle me-1"></i>Profile
                             </a>
                         </li>
-                        <!-- Theme Switcher Dropdown -->
-                        <li class="nav-item dropdown ms-lg-2">
-                            <a class="nav-link dropdown-toggle" href="#" id="themeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+
+                        <!-- Live Status Indicator -->
+                        <li class="nav-item ms-1 d-none d-lg-flex align-items-center px-2">
+                            <span class="nav-status-dot me-1"></span>
+                            <span class="text-muted" style="font-size: 0.75rem;">Live</span>
+                        </li>
+
+                        <!-- Theme Switcher -->
+                        <li class="nav-item dropdown ms-1">
+                            <a class="nav-link dropdown-toggle" href="#" id="themeDropdown" role="button"
+                               data-bs-toggle="dropdown" aria-expanded="false">
                                 <i class="bi bi-palette-fill me-1"></i>Theme
                             </a>
-                            <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end border-glass" aria-labelledby="themeDropdown" style="background: rgba(13, 18, 33, 0.95); backdrop-filter: blur(10px);">
-                                <li><a class="dropdown-item" href="#" onclick="changeTheme('dark')"><i class="bi bi-moon-stars-fill text-primary me-2"></i>Glass Dark</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="changeTheme('light')"><i class="bi bi-sun-fill text-warning me-2"></i>Glass Light</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="changeTheme('cyberpunk')"><i class="bi bi-lightning-charge-fill text-info me-2"></i>Cyberpunk Neon</a></li>
-                                <li><a class="dropdown-item" href="#" onclick="changeTheme('forest')"><i class="bi bi-tree-fill text-success me-2"></i>Forest Mint</a></li>
+                            <ul class="dropdown-menu dropdown-menu-end border-0"
+                                style="background: rgba(10,14,26,0.97); backdrop-filter: blur(14px); border: 1px solid var(--border-glass) !important; border-radius: 14px; padding: 8px; min-width: 190px;"
+                                aria-labelledby="themeDropdown">
+                                <li>
+                                    <a class="dropdown-item rounded-3 py-2 px-3 mb-1" href="#" onclick="changeTheme('dark')"
+                                       style="color: var(--text-secondary); font-size: 0.87rem;">
+                                        <i class="bi bi-moon-stars-fill text-primary me-2"></i>Glass Dark
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-3 py-2 px-3 mb-1" href="#" onclick="changeTheme('light')"
+                                       style="color: var(--text-secondary); font-size: 0.87rem;">
+                                        <i class="bi bi-sun-fill text-warning me-2"></i>Glass Light
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-3 py-2 px-3 mb-1" href="#" onclick="changeTheme('cyberpunk')"
+                                       style="color: var(--text-secondary); font-size: 0.87rem;">
+                                        <i class="bi bi-lightning-charge-fill text-info me-2"></i>Cyberpunk Neon
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item rounded-3 py-2 px-3" href="#" onclick="changeTheme('forest')"
+                                       style="color: var(--text-secondary); font-size: 0.87rem;">
+                                        <i class="bi bi-tree-fill text-success me-2"></i>Forest Mint
+                                    </a>
+                                </li>
                             </ul>
                         </li>
-                        <li class="nav-item ms-lg-3">
+
+                        <li class="nav-item ms-2">
                             <a class="btn btn-danger-red btn-sm px-3 rounded-pill" href="{{ url_for('auth.logout') }}">
                                 <i class="bi bi-box-arrow-right me-1"></i>Logout
                             </a>
                         </li>
                     {% else %}
                         <li class="nav-item">
-                            <a class="nav-link {% if 'login' in request.path %}active{% endif %}" href="{{ url_for('auth.login') }}">Login</a>
+                            <a class="nav-link {% if 'login' in request.path %}active{% endif %}" href="{{ url_for('auth.login') }}">
+                                <i class="bi bi-box-arrow-in-right me-1"></i>Sign In
+                            </a>
                         </li>
-                        <li class="nav-item ms-lg-2">
-                            <a class="btn btn-primary-gradient btn-sm" href="{{ url_for('auth.register') }}">Sign Up</a>
+                        <li class="nav-item ms-1">
+                            <a class="btn btn-primary-gradient btn-sm px-4" href="{{ url_for('auth.register') }}">
+                                Get Started
+                            </a>
                         </li>
                     {% endif %}
                 </ul>
@@ -104,18 +169,20 @@
     </nav>
 
     <!-- Main Content Container -->
-    <div class="container my-4 relative-position animate-slide-up">
-        
+    <div class="container my-4 animate-slide-up">
+
         <!-- Flash Message Alerts -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="row justify-content-center">
+                <div class="row justify-content-center mb-2">
                     <div class="col-md-10">
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show border-0 text-white" style="background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(10px);" role="alert">
-                                <i class="bi {% if category == 'success' %}bi-check-circle-fill{% elif category == 'info' %}bi-info-circle-fill{% else %}bi-exclamation-triangle-fill{% endif %} me-2"></i>
-                                {{ message }}
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert" aria-label="Close"></button>
+                            <div class="alert alert-dismissible fade show border-0 rounded-3 text-white d-flex align-items-center gap-2"
+                                 style="background: rgba({% if category == 'success' %}16,185,129{% elif category == 'danger' or category == 'error' %}239,68,68{% else %}59,130,246{% endif %}, 0.14); border: 1px solid rgba({% if category == 'success' %}16,185,129{% elif category == 'danger' or category == 'error' %}239,68,68{% else %}59,130,246{% endif %}, 0.25) !important; backdrop-filter: blur(8px);"
+                                 role="alert">
+                                <i class="bi {% if category == 'success' %}bi-check-circle-fill text-success{% elif category == 'danger' or category == 'error' %}bi-exclamation-triangle-fill text-danger{% else %}bi-info-circle-fill text-primary{% endif %} fs-5"></i>
+                                <span>{{ message }}</span>
+                                <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         {% endfor %}
                     </div>
@@ -126,20 +193,112 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+    <!-- NProgress -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nprogress/0.2.0/nprogress.min.js"></script>
+
     <script>
+        // ── Page Loader ──
         window.addEventListener('DOMContentLoaded', () => {
+            // Initialize Bootstrap tooltips
+            document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+                new bootstrap.Tooltip(el, { trigger: 'hover' });
+            });
+
+            // Hide page loader
             const loader = document.getElementById('pageLoader');
             if (loader) {
-                setTimeout(() => {
-                    loader.classList.add('fade-out');
-                }, 300);
+                setTimeout(() => loader.classList.add('fade-out'), 280);
+            }
+
+            // Navbar scroll shadow effect
+            const nav = document.getElementById('mainNav');
+            window.addEventListener('scroll', () => {
+                nav.classList.toggle('scrolled', window.scrollY > 20);
+            }, { passive: true });
+        });
+
+        // ── NProgress on link navigation ──
+        NProgress.configure({ showSpinner: false, speed: 400 });
+        document.addEventListener('click', e => {
+            const a = e.target.closest('a[href]');
+            if (a && !a.href.includes('#') && !a.href.startsWith('javascript') && !a.getAttribute('data-bs-toggle')) {
+                NProgress.start();
+            }
+        });
+        window.addEventListener('load', () => NProgress.done());
+
+        // ── Button tactile blink ──
+        document.addEventListener('click', e => {
+            const btn = e.target.closest('.btn-primary-gradient, .btn-accent-gradient');
+            if (btn) {
+                btn.classList.add('btn-blink');
+                setTimeout(() => btn.classList.remove('btn-blink'), 400);
+            }
+        });
+
+        // ── Global keyboard shortcut: S → focus symbol select ──
+        document.addEventListener('keydown', e => {
+            if (e.key === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                const active = document.activeElement;
+                const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.tagName === 'SELECT');
+                if (!isInput) {
+                    const sel = document.getElementById('symbolSelect') || document.getElementById('trainSymbolSelect');
+                    if (sel) { e.preventDefault(); sel.focus(); }
+                }
             }
         });
     </script>
-    
+
+    <script>
+        // ── Global toast notification API ──
+        // Usage: window.showToast('Message', 'success'|'error'|'info'|'warning', durationMs)
+        window.showToast = function(message, type = 'info', duration = 4000) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const icons = {
+                success: 'bi-check-circle-fill',
+                error:   'bi-x-circle-fill',
+                info:    'bi-info-circle-fill',
+                warning: 'bi-exclamation-triangle-fill'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `toast-msg toast-${type}`;
+            toast.style.setProperty('--toast-duration', `${duration}ms`);
+            toast.innerHTML = `
+                <span class="toast-icon"><i class="bi ${icons[type] || icons.info}"></i></span>
+                <span class="toast-text">${message}</span>
+                <button class="toast-close" aria-label="Close" onclick="this.parentElement.remove()">✕</button>
+            `;
+            // Animate the timer bar
+            toast.querySelector('button').style.cssText = '';
+            toast.style.cssText += ``;
+            // Apply duration to the ::after pseudo-element via CSS var
+            toast.style.setProperty('animation-duration', `${duration}ms`, '');
+            // Hack: set the --duration on the element so ::after can read it
+            toast.style.setProperty('--td', `${duration}ms`);
+            // Override ::after animation duration
+            const style = document.createElement('style');
+            const id = `t${Date.now()}`;
+            toast.id = id;
+            style.textContent = `#${id}::after { animation-duration: ${duration}ms; }`;
+            document.head.appendChild(style);
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('toast-fade-out');
+                setTimeout(() => { toast.remove(); style.remove(); }, 320);
+            }, duration);
+        };
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

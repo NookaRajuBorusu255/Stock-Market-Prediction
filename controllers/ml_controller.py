@@ -39,15 +39,18 @@ def train_classical_models(symbol):
     """
     try:
         results = train_and_evaluate_models(symbol)
-        
-        # Flatten predictions for easy json return
+
+        # Include backtest arrays so the frontend can render an Actual vs Predicted chart
         response_data = {}
         for name, metrics in results.items():
             response_data[name] = {
-                'mae': metrics['mae'],
-                'rmse': metrics['rmse'],
-                'r2': metrics['r2'],
-                'mape': metrics['mape']
+                'mae':              metrics['mae'],
+                'rmse':             metrics['rmse'],
+                'r2':               metrics['r2'],
+                'mape':             metrics['mape'],
+                'test_dates':       metrics.get('test_dates', []),
+                'test_actuals':     metrics.get('test_actuals', []),
+                'test_predictions': metrics.get('test_predictions', []),
             }
         return jsonify({'success': True, 'results': response_data})
     except Exception as e:
@@ -61,9 +64,10 @@ def train_lstm(symbol):
     Supports input parameter for customized epochs.
     """
     try:
-        epochs = int(request.json.get('epochs', 5))
-        lookback = int(request.json.get('lookback', 60))
-        batch_size = int(request.json.get('batch_size', 32))
+        body = request.get_json(silent=True) or {}
+        epochs = int(body.get('epochs', 5))
+        lookback = int(body.get('lookback', 60))
+        batch_size = int(body.get('batch_size', 32))
         
         results = train_lstm_model(symbol, lookback=lookback, epochs=epochs, batch_size=batch_size)
         
@@ -87,7 +91,8 @@ def predict_price(symbol):
     and saves prediction log inside User profile.
     """
     try:
-        model_name = request.json.get('model', 'XGBoost')
+        body = request.get_json(silent=True) or {}
+        model_name = body.get('model', 'XGBoost')
         
         if model_name == 'LSTM':
             # Forecast next day Close

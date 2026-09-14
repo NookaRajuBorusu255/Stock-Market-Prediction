@@ -3,34 +3,64 @@
 {% block title %}Stock Analysis Dashboard{% endblock %}
 
 {% block content %}
+<!-- Market Status Bar -->
+<div class="d-flex align-items-center justify-content-between mb-3 px-1">
+    <div class="d-flex align-items-center gap-3">
+        <div class="d-flex align-items-center gap-2">
+            <span class="nav-status-dot"></span>
+            <span class="text-white fw-semibold" style="font-size: 0.9rem;" id="dashSymbolLabel">AAPL</span>
+        </div>
+        <span class="text-muted" style="font-size: 0.8rem; font-family: 'JetBrains Mono', monospace;" id="dashLastUpdate">—</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <!-- Time Range Filters -->
+        <div class="d-none d-md-flex gap-1" id="timeRangeGroup">
+            <button class="time-range-btn" data-range="90">3M</button>
+            <button class="time-range-btn" data-range="180">6M</button>
+            <button class="time-range-btn active" data-range="365">1Y</button>
+            <button class="time-range-btn" data-range="730">2Y</button>
+            <button class="time-range-btn" data-range="0">All</button>
+        </div>
+    </div>
+</div>
+
 <div class="row">
-    <!-- Sidebar Control & Intelligence Panel -->
+    <!-- Sidebar Control Panel -->
     <div class="col-lg-3 mb-4">
         <div class="glass-card">
-            <!-- Sidebar Navigation Tabs -->
-            <ul class="nav nav-pills nav-fill mb-3" id="sidebarTab" role="tablist" style="background: rgba(255, 255, 255, 0.03); border-radius: 12px; padding: 4px; border: 1px solid rgba(255, 255, 255, 0.05);">
+            <!-- Sidebar Tabs -->
+            <ul class="nav nav-pills nav-fill mb-3" id="sidebarTab" role="tablist"
+                style="background: rgba(255,255,255,0.025); border-radius: 10px; padding: 4px; border: 1px solid var(--border-glass);">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm py-2 active" id="sidebar-system-tab" data-bs-toggle="tab" data-bs-target="#sidebar-system" type="button" role="tab" aria-selected="true" style="font-size: 0.8rem; border-radius: 8px;">
+                    <button class="nav-link btn-sm py-2 active" id="sidebar-system-tab"
+                            data-bs-toggle="tab" data-bs-target="#sidebar-system" type="button" role="tab"
+                            style="font-size: 0.78rem; border-radius: 7px;">
                         <i class="bi bi-sliders me-1"></i>Ctrl
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm py-2" id="sidebar-predict-tab" data-bs-toggle="tab" data-bs-target="#sidebar-predict" type="button" role="tab" aria-selected="false" style="font-size: 0.8rem; border-radius: 8px;">
+                    <button class="nav-link btn-sm py-2" id="sidebar-predict-tab"
+                            data-bs-toggle="tab" data-bs-target="#sidebar-predict" type="button" role="tab"
+                            style="font-size: 0.78rem; border-radius: 7px;">
                         <i class="bi bi-cpu me-1"></i>AI
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm py-2" id="sidebar-news-tab" data-bs-toggle="tab" data-bs-target="#sidebar-news" type="button" role="tab" aria-selected="false" style="font-size: 0.8rem; border-radius: 8px;">
+                    <button class="nav-link btn-sm py-2" id="sidebar-news-tab"
+                            data-bs-toggle="tab" data-bs-target="#sidebar-news" type="button" role="tab"
+                            style="font-size: 0.78rem; border-radius: 7px;">
                         <i class="bi bi-newspaper me-1"></i>News
                     </button>
                 </li>
             </ul>
 
-            <!-- Sidebar Tab Panes -->
-            <div class="tab-content pt-2" id="sidebarTabContent">
-                <!-- 1. System Control Tab -->
-                <div class="tab-pane fade show active" id="sidebar-system" role="tabpanel" aria-labelledby="sidebar-system-tab">
-                    <h6 class="text-white small fw-bold mb-2"><i class="bi bi-search me-1 text-primary"></i>Active Stock</h6>
+            <div class="tab-content pt-1" id="sidebarTabContent">
+
+                <!-- 1. Control Tab -->
+                <div class="tab-pane fade show active" id="sidebar-system" role="tabpanel">
+                    <h6 class="text-white fw-bold mb-2" style="font-size: 0.82rem;">
+                        <i class="bi bi-search me-1 text-primary"></i>Active Symbol
+                    </h6>
                     <div class="mb-3">
                         <select class="form-select form-glass w-100" id="symbolSelect">
                             {% for sym in symbols %}
@@ -39,22 +69,27 @@
                         </select>
                     </div>
                     <div class="d-grid mb-4">
-                        <a id="downloadReportBtn" href="{{ url_for('report.download_pdf_report', symbol='AAPL') }}" class="btn btn-accent-gradient btn-sm py-2">
+                        <a id="downloadReportBtn" href="{{ url_for('report.download_pdf_report', symbol='AAPL') }}"
+                           class="btn btn-accent-gradient btn-sm py-2">
                             <i class="bi bi-file-pdf me-1"></i>Download PDF Report
                         </a>
                     </div>
-                    
-                    <hr class="border-glass my-3">
-                    
-                    <h6 class="text-white small fw-bold mb-2"><i class="bi bi-cloud-upload me-1 text-primary"></i>Upload Dataset</h6>
-                    <p class="text-secondary small mb-3" style="font-size: 0.75rem; line-height: 1.4;">Supports custom stock CSV/TXT with columns: Date, Open, High, Low, Close, Volume.</p>
-                    
+
+                    <hr style="border-color: var(--border-glass); opacity: 1;" class="my-3">
+
+                    <h6 class="text-white fw-bold mb-2" style="font-size: 0.82rem;">
+                        <i class="bi bi-cloud-upload me-1 text-primary"></i>Upload Dataset
+                    </h6>
+                    <p class="text-secondary mb-3" style="font-size: 0.75rem; line-height: 1.45;">
+                        CSV/TXT with columns: Date, Open, High, Low, Close, Volume.
+                    </p>
                     <form action="{{ url_for('dashboard.upload_file') }}" method="POST" enctype="multipart/form-data">
-                        <div class="mb-3">
-                            <input class="form-control form-glass py-1.5 px-2" style="font-size: 0.78rem;" type="file" name="file" accept=".csv,.txt" required>
+                        <div class="mb-2">
+                            <input class="form-control form-glass" style="font-size: 0.78rem; padding: 7px 10px;"
+                                   type="file" name="file" accept=".csv,.txt" required>
                         </div>
                         <div class="d-grid">
-                            <button type="submit" class="btn btn-outline-light btn-sm rounded-pill py-2">
+                            <button type="submit" class="btn btn-glass btn-sm rounded-pill py-2" style="font-size: 0.8rem;">
                                 <i class="bi bi-upload me-1"></i>Upload CSV
                             </button>
                         </div>
@@ -62,230 +97,263 @@
                 </div>
 
                 <!-- 2. AI Forecasting Tab -->
-                <div class="tab-pane fade" id="sidebar-predict" role="tabpanel" aria-labelledby="sidebar-predict-tab">
-                    <h6 class="text-white small fw-bold mb-2"><i class="bi bi-magic me-1 text-primary"></i>Predict Engine</h6>
-                    <p class="text-secondary small mb-3" style="font-size: 0.78rem;">Generate next-day price predictions using classical ML or deep LSTM networks.</p>
-                    
+                <div class="tab-pane fade" id="sidebar-predict" role="tabpanel">
+                    <h6 class="text-white fw-bold mb-2" style="font-size: 0.82rem;">
+                        <i class="bi bi-magic me-1 text-primary"></i>Predict Engine
+                    </h6>
+                    <p class="text-secondary mb-3" style="font-size: 0.78rem; line-height: 1.4;">
+                        Generate next-day price predictions using classical ML or deep LSTM networks.
+                    </p>
+
                     <div class="mb-3">
-                        <label class="form-label text-secondary small fw-semibold" style="font-size: 0.75rem;">Model Architecture</label>
+                        <label class="form-label text-secondary fw-semibold mb-1" style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em;">Model</label>
                         <select class="form-select form-glass w-100" id="predictModelSelect">
                             <option value="XGBoost">XGBoost Regressor</option>
                             <option value="Random Forest">Random Forest</option>
-                            <option value="Linear Regression">Linear Regression (Baseline)</option>
+                            <option value="Linear Regression">Linear Regression</option>
                             <option value="LSTM">LSTM Deep Learning</option>
                         </select>
                     </div>
-                    
+
                     <div class="d-grid mb-3">
                         <button class="btn btn-primary-gradient py-2" id="predictBtn">
                             <i class="bi bi-lightning-charge me-1"></i>Generate Prediction
                         </button>
                     </div>
-                    
-                    <!-- Result display container -->
-                    <div class="p-3 rounded text-center d-none" id="predictionResultBox" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-glass);">
-                        <div class="small text-secondary mb-1" style="font-size: 0.75rem;">Forecast for <span id="predTargetDate" class="text-primary fw-semibold"></span></div>
-                        <div class="h3 text-white mb-2 fw-semibold" id="predPriceVal">$0.00</div>
-                        <div class="small text-secondary" style="font-size: 0.75rem;">Confidence: <span id="predConfVal" class="text-success fw-bold">0.0%</span></div>
+
+                    <div class="p-3 rounded-3 text-center d-none" id="predictionResultBox"
+                         style="background: rgba(99,102,241,0.07); border: 1px solid rgba(99,102,241,0.2);">
+                        <div class="text-secondary mb-1" style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                            Forecast · <span id="predTargetDate" class="text-primary fw-semibold"></span>
+                        </div>
+                        <div class="fw-bold text-white mb-1" style="font-size: 1.6rem; font-family: 'JetBrains Mono', monospace;" id="predPriceVal">$0.00</div>
+                        <div class="text-secondary" style="font-size: 0.72rem;">
+                            Confidence: <span id="predConfVal" class="text-success fw-bold">0.0%</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 3. AI News & Sentiment Tab -->
-                <div class="tab-pane fade" id="sidebar-news" role="tabpanel" aria-labelledby="sidebar-news-tab">
-                    <h6 class="text-white small fw-bold mb-3"><i class="bi bi-graph-up-arrow me-1 text-primary"></i>Market Sentiment</h6>
-                    
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-secondary small">Overall Signal:</span>
-                        <span class="metric-badge badge-neutral" id="sentimentSignalBadge" style="padding: 4px 8px; font-size: 0.75rem;">N/A</span>
+                <!-- 3. Market Sentiment Tab -->
+                <div class="tab-pane fade" id="sidebar-news" role="tabpanel">
+                    <h6 class="text-white fw-bold mb-3" style="font-size: 0.82rem;">
+                        <i class="bi bi-graph-up-arrow me-1 text-primary"></i>Market Sentiment
+                    </h6>
+
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary" style="font-size: 0.8rem;">Overall Signal:</span>
+                        <span class="metric-badge badge-neutral" id="sentimentSignalBadge" style="padding: 3px 10px; font-size: 0.72rem;">N/A</span>
                     </div>
-                    
+
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between small text-secondary mb-1" style="font-size: 0.75rem;">
+                        <div class="d-flex justify-content-between text-secondary mb-1" style="font-size: 0.73rem;">
                             <span>Composite Score</span>
-                            <span id="sentimentScoreVal">0.00</span>
+                            <span id="sentimentScoreVal" class="font-mono">0.00</span>
                         </div>
-                        <div class="progress" style="height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px;">
-                            <div class="progress-bar" id="sentimentProgressBar" role="progressbar" style="width: 50%; background: var(--primary-gradient);" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        <div class="progress" style="height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px;">
+                            <div class="progress-bar" id="sentimentProgressBar" role="progressbar"
+                                 style="width: 50%; background: var(--primary-gradient);" aria-valuenow="50" aria-valuemin="0" aria-valuemax="100">
+                            </div>
                         </div>
                     </div>
-                    
-                    <h6 class="text-white small fw-bold mb-2 mt-4">Headlines Sentiment</h6>
-                    <div id="sentimentNewsList" class="d-flex flex-column gap-2 mb-3" style="max-height: 200px; overflow-y: auto; padding-right: 2px;">
-                        <div class="text-center text-muted small py-2">No active headlines. Select a symbol.</div>
+
+                    <h6 class="text-white fw-bold mb-2 mt-3" style="font-size: 0.8rem;">Headlines</h6>
+                    <div id="sentimentNewsList" class="d-flex flex-column gap-2 mb-3"
+                         style="max-height: 210px; overflow-y: auto; padding-right: 2px;">
+                        <div class="text-center text-muted py-3" style="font-size: 0.78rem;">
+                            <i class="bi bi-newspaper d-block mb-1 fs-5 opacity-40"></i>Select a symbol to load headlines.
+                        </div>
                     </div>
-                    
-                    <!-- Selected Headline Analyzer Card -->
-                    <div id="selectedNewsCard" class="mt-3 p-3 rounded d-none" style="background: rgba(255, 255, 255, 0.04); border: 1px solid var(--border-glass);">
-                        <h6 class="text-white small fw-bold mb-1.5" style="font-size: 0.8rem;"><i class="bi bi-cpu text-primary me-1"></i>Headline Analyzer</h6>
-                        <div id="selectedNewsText" class="text-secondary small mb-3 lh-sm" style="font-size: 0.75rem; font-style: italic; overflow-wrap: break-word;"></div>
+
+                    <div id="selectedNewsCard" class="mt-2 p-3 rounded-3 d-none"
+                         style="background: rgba(99,102,241,0.06); border: 1px solid rgba(99,102,241,0.18);">
+                        <h6 class="text-white fw-bold mb-2" style="font-size: 0.78rem;">
+                            <i class="bi bi-cpu text-primary me-1"></i>Headline Analyzer
+                        </h6>
+                        <div id="selectedNewsText" class="text-secondary mb-3" style="font-size: 0.75rem; font-style: italic; overflow-wrap: break-word; line-height: 1.45;"></div>
                         <div class="d-grid">
-                            <button class="btn btn-primary-gradient btn-sm py-1.5" id="analyzeNewsBtn" onclick="analyzeNewsWithAI()" style="font-size: 0.78rem;">
-                                <i class="bi bi-chat-dots me-1"></i>Analyze with Chatbot
+                            <button class="btn btn-primary-gradient btn-sm py-2" id="analyzeNewsBtn" onclick="analyzeNewsWithAI()" style="font-size: 0.78rem;">
+                                <i class="bi bi-chat-dots me-1"></i>Analyze with AI
                             </button>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
-    <!-- Main Analytical Dashboard -->
+    <!-- Main Dashboard Content -->
     <div class="col-lg-9">
-        <!-- Metric Cards Grid -->
-        <div class="row mb-4">
-            <!-- Price Summary -->
-            <div class="col-md-3 mb-3 mb-md-0">
-                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between">
-                    <div class="small text-secondary fw-semibold d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
-                        <span>LATEST PRICE</span>
-                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip" data-bs-placement="top" title="Most recent closing price in the dataset."></i>
+        <!-- Metric Cards -->
+        <div class="row mb-4 g-3">
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between animate-slide-up stagger-1">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary fw-semibold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;">Latest Price</span>
+                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip"
+                           title="Most recent closing price in the dataset."></i>
                     </div>
-                    <div class="h3 my-2 text-white metric-value-update" id="metricPrice">$0.00</div>
-                    <div class="small" id="metricPriceChange">+0.00 (+0.00%)</div>
+                    <div class="metric-value-update fw-bold text-white my-1" id="metricPrice"
+                         style="font-size: 1.55rem; font-family: 'JetBrains Mono', monospace;">$—</div>
+                    <div class="small fw-semibold" id="metricPriceChange" style="font-size: 0.78rem;">—</div>
                 </div>
             </div>
-            <!-- RSI status -->
-            <div class="col-md-3 mb-3 mb-md-0">
-                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between">
-                    <div class="small text-secondary fw-semibold d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
-                        <span>RSI (14 DAY)</span>
-                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip" data-bs-placement="top" title="Relative Strength Index. >70 is Overbought, <30 is Oversold."></i>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between animate-slide-up stagger-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary fw-semibold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;">RSI (14)</span>
+                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip"
+                           title="Relative Strength Index. >70 Overbought, <30 Oversold."></i>
                     </div>
-                    <div class="h3 my-2 text-white metric-value-update" id="metricRsi">0.00</div>
-                    <div><span class="metric-badge badge-neutral" id="metricRsiBadge" style="padding: 4px 8px; font-size: 0.75rem;">N/A</span></div>
+                    <div class="metric-value-update fw-bold text-white my-1" id="metricRsi"
+                         style="font-size: 1.55rem; font-family: 'JetBrains Mono', monospace;">—</div>
+                    <div><span class="metric-badge badge-neutral" id="metricRsiBadge" style="padding: 3px 10px; font-size: 0.72rem;">N/A</span></div>
                 </div>
             </div>
-            <!-- MACD Crossover -->
-            <div class="col-md-3 mb-3 mb-md-0">
-                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between">
-                    <div class="small text-secondary fw-semibold d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
-                        <span>MACD CROSSOVER</span>
-                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip" data-bs-placement="top" title="Moving Average Convergence Divergence. Positive represents a bullish crossover, negative is bearish."></i>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between animate-slide-up stagger-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary fw-semibold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;">MACD</span>
+                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip"
+                           title="Moving Average Convergence Divergence. Positive = bullish crossover."></i>
                     </div>
-                    <div class="h3 my-2 text-white metric-value-update" id="metricMacd">0.0000</div>
-                    <div><span class="metric-badge badge-neutral" id="metricMacdBadge" style="padding: 4px 8px; font-size: 0.75rem;">N/A</span></div>
+                    <div class="metric-value-update fw-bold text-white my-1" id="metricMacd"
+                         style="font-size: 1.55rem; font-family: 'JetBrains Mono', monospace;">—</div>
+                    <div><span class="metric-badge badge-neutral" id="metricMacdBadge" style="padding: 3px 10px; font-size: 0.72rem;">N/A</span></div>
                 </div>
             </div>
-            <!-- Annualized Volatility -->
-            <div class="col-md-3">
-                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between">
-                    <div class="small text-secondary fw-semibold d-flex justify-content-between align-items-center" style="font-size: 0.75rem;">
-                        <span>ANNUAL VOLATILITY</span>
-                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip" data-bs-placement="top" title="Annualized volatility calculated from a 20-day rolling window of close returns."></i>
+            <div class="col-6 col-md-3">
+                <div class="glass-card p-3 h-100 d-flex flex-column justify-content-between animate-slide-up stagger-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="text-secondary fw-semibold" style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em;">Annual Vol.</span>
+                        <i class="bi bi-info-circle text-muted tooltip-indicator" data-bs-toggle="tooltip"
+                           title="Annualized volatility from 20-day rolling window of close returns."></i>
                     </div>
-                    <div class="h3 my-2 text-white metric-value-update" id="metricVol">0.0%</div>
-                    <div class="small text-secondary" style="font-size: 0.75rem;">20-day rolling sample</div>
+                    <div class="metric-value-update fw-bold text-white my-1" id="metricVol"
+                         style="font-size: 1.55rem; font-family: 'JetBrains Mono', monospace;">—</div>
+                    <div class="text-secondary" style="font-size: 0.73rem;">20-day rolling sample</div>
                 </div>
             </div>
         </div>
 
-        <!-- Dynamic Unified Chart Area -->
+        <!-- Chart Area -->
         <div class="glass-card mb-4">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2 mb-3">
-                <h5 class="m-0 text-white" id="chartHeaderTitle"><i class="bi bi-graph-up me-2 text-primary"></i>Historical Analysis - AAPL</h5>
+                <h5 class="m-0 text-white" id="chartHeaderTitle">
+                    <i class="bi bi-graph-up me-2 text-primary"></i>Historical Analysis — AAPL
+                </h5>
                 <!-- Chart Tab buttons -->
-                <ul class="nav nav-pills" id="chartTab" role="tablist" style="background: rgba(255, 255, 255, 0.02); padding: 3px; border-radius: 20px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                    <li class="nav-item" role="presentation">
-                        <button class="btn btn-sm btn-outline-light rounded-pill me-1 active" style="font-size: 0.75rem;" id="candles-tab" data-bs-toggle="tab" data-bs-target="#candles" type="button" role="tab" aria-selected="true">Candlestick & MAs</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="btn btn-sm btn-outline-light rounded-pill me-1" style="font-size: 0.75rem;" id="indicators-tab" data-bs-toggle="tab" data-bs-target="#indicators" type="button" role="tab" aria-selected="false">MACD & RSI</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="btn btn-sm btn-outline-light rounded-pill me-1" style="font-size: 0.75rem;" id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab" aria-selected="false">Volume</button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="btn btn-sm btn-outline-light rounded-pill me-1" style="font-size: 0.75rem;" id="heatmap-tab" data-bs-toggle="tab" data-bs-target="#heatmap" type="button" role="tab" aria-selected="false">
-                            <i class="bi bi-fire me-1 text-danger animate-pulse"></i>Correlations (Seaborn)
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="btn btn-sm btn-outline-light rounded-pill" style="font-size: 0.75rem;" id="signals-tab" data-bs-toggle="tab" data-bs-target="#signals" type="button" role="tab" aria-selected="false">
-                            <i class="bi bi-activity me-1 text-primary"></i>Technical Signals
-                        </button>
-                    </li>
-                </ul>
+                <div class="d-flex flex-wrap gap-1" id="chartTabBtns">
+                    <button class="btn btn-sm btn-glass rounded-pill active px-3" style="font-size: 0.75rem;"
+                            id="candles-tab" data-bs-toggle="tab" data-bs-target="#candles" type="button" role="tab">
+                        <i class="bi bi-bar-chart me-1"></i>Candles
+                    </button>
+                    <button class="btn btn-sm btn-glass rounded-pill px-3" style="font-size: 0.75rem;"
+                            id="indicators-tab" data-bs-toggle="tab" data-bs-target="#indicators" type="button" role="tab">
+                        MACD & RSI
+                    </button>
+                    <button class="btn btn-sm btn-glass rounded-pill px-3" style="font-size: 0.75rem;"
+                            id="volume-tab" data-bs-toggle="tab" data-bs-target="#volume" type="button" role="tab">
+                        Volume
+                    </button>
+                    <button class="btn btn-sm btn-glass rounded-pill px-3" style="font-size: 0.75rem;"
+                            id="heatmap-tab" data-bs-toggle="tab" data-bs-target="#heatmap" type="button" role="tab">
+                        <i class="bi bi-fire me-1 text-warning"></i>Correlations
+                    </button>
+                    <button class="btn btn-sm btn-glass rounded-pill px-3" style="font-size: 0.75rem;"
+                            id="signals-tab" data-bs-toggle="tab" data-bs-target="#signals" type="button" role="tab">
+                        <i class="bi bi-activity me-1"></i>Signals
+                    </button>
+                    <!-- Bollinger Bands toggle — only visible on Candles tab -->
+                    <button class="btn btn-sm btn-glass rounded-pill px-3 bb-toggle-btn" style="font-size: 0.75rem;"
+                            type="button" title="Toggle Bollinger Bands (20-day, 2σ)" data-bs-toggle="tooltip">
+                        <i class="bi bi-toggles me-1"></i>BB
+                    </button>
+                </div>
             </div>
 
             <!-- Tab Content -->
             <div class="tab-content" id="chartTabContent">
-                <!-- Candlestick -->
-                <div class="tab-pane fade show active" id="candles" role="tabpanel" aria-labelledby="candles-tab">
-                    <div id="plotlyPriceChart" style="height: 500px; width: 100%;"></div>
+                <div class="tab-pane fade show active" id="candles" role="tabpanel">
+                    <div id="plotlyPriceChart" style="height: 480px; width: 100%;"></div>
                 </div>
-                <!-- Indicators -->
-                <div class="tab-pane fade" id="indicators" role="tabpanel" aria-labelledby="indicators-tab">
-                    <div id="plotlyIndicatorChart" style="height: 500px; width: 100%;"></div>
+                <div class="tab-pane fade" id="indicators" role="tabpanel">
+                    <div id="plotlyIndicatorChart" style="height: 480px; width: 100%;"></div>
                 </div>
-                <!-- Volume -->
-                <div class="tab-pane fade" id="volume" role="tabpanel" aria-labelledby="volume-tab">
-                    <div id="plotlyVolumeChart" style="height: 500px; width: 100%;"></div>
+                <div class="tab-pane fade" id="volume" role="tabpanel">
+                    <div id="plotlyVolumeChart" style="height: 480px; width: 100%;"></div>
                 </div>
                 <!-- Seaborn Correlation Heatmap -->
-                <div class="tab-pane fade" id="heatmap" role="tabpanel" aria-labelledby="heatmap-tab">
-                    <div class="d-flex flex-column align-items-center justify-content-center py-4" style="min-height: 500px;">
-                        <p class="text-secondary small text-center mb-3">Statistical correlation matrix of technical indicators computed dynamically using **Seaborn** and **Matplotlib**.</p>
-                        <div class="position-relative text-center d-flex align-items-center justify-content-center" style="max-width: 620px; width: 100%;">
-                            <img id="seabornHeatmapImg" class="img-fluid rounded border border-glass" style="display: none; width: 100%; height: auto; max-height: 420px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);" alt="Indicator Correlation Matrix Heatmap">
+                <div class="tab-pane fade" id="heatmap" role="tabpanel">
+                    <div class="d-flex flex-column align-items-center justify-content-center py-4" style="min-height: 480px;">
+                        <p class="text-secondary text-center mb-4" style="font-size: 0.85rem; max-width: 480px;">
+                            Statistical correlation matrix of technical indicators — computed dynamically via <strong class="text-white">Seaborn</strong> &amp; <strong class="text-white">Matplotlib</strong>.
+                        </p>
+                        <div class="position-relative text-center d-flex align-items-center justify-content-center" style="max-width: 640px; width: 100%;">
+                            <img id="seabornHeatmapImg" class="img-fluid rounded-3"
+                                 style="display: none; width: 100%; height: auto; max-height: 420px; box-shadow: 0 8px 32px rgba(0,0,0,0.5);"
+                                 alt="Indicator Correlation Matrix">
                             <div id="heatmapLoader" class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading Correlation Heatmap...</span>
+                                <span class="visually-hidden">Loading…</span>
                             </div>
                             <div id="heatmapError" class="text-danger small mt-2 d-none"></div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Technical Signals Summary Table -->
-                <div class="tab-pane fade" id="signals" role="tabpanel" aria-labelledby="signals-tab">
-                    <div class="p-4" style="min-height: 500px;">
-                        <h6 class="text-white mb-2"><i class="bi bi-activity text-primary me-2"></i>Technical Indicator Consensus Summary</h6>
-                        <p class="text-secondary small mb-4">Detailed consensus signals generated dynamically using **Pandas**, **NumPy**, and **Scikit-learn** algorithms based on historical indicators.</p>
-                        
+                <!-- Technical Signals Table -->
+                <div class="tab-pane fade" id="signals" role="tabpanel">
+                    <div class="p-3" style="min-height: 480px;">
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <h6 class="text-white m-0">
+                                <i class="bi bi-activity text-primary me-2"></i>Technical Indicator Consensus
+                            </h6>
+                            <span class="text-muted" style="font-size: 0.75rem;">Live signals from Pandas / NumPy</span>
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-glass text-start align-middle">
                                 <thead>
                                     <tr>
-                                        <th>Indicator Name</th>
+                                        <th>Indicator</th>
                                         <th>Formula / Window</th>
-                                        <th>Current Value</th>
-                                        <th>Consensus Signal</th>
-                                        <th>Action / Weight</th>
+                                        <th>Value</th>
+                                        <th>Signal</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td class="fw-semibold text-white">Simple Moving Average (SMA 20)</td>
-                                        <td class="text-secondary">20-day rolling price average</td>
-                                        <td id="sigSma20">0.00</td>
-                                        <td><span class="metric-badge" id="sigSma20Badge">N/A</span></td>
+                                        <td class="fw-semibold text-white">SMA 20</td>
+                                        <td class="text-secondary">20-day rolling average</td>
+                                        <td class="font-mono" id="sigSma20">—</td>
+                                        <td><span class="metric-badge badge-neutral" id="sigSma20Badge">N/A</span></td>
                                         <td class="text-secondary" id="sigSma20Action">-</td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-semibold text-white">Simple Moving Average (SMA 50)</td>
-                                        <td class="text-secondary">50-day rolling price average</td>
-                                        <td id="sigSma50">0.00</td>
-                                        <td><span class="metric-badge" id="sigSma50Badge">N/A</span></td>
+                                        <td class="fw-semibold text-white">SMA 50</td>
+                                        <td class="text-secondary">50-day rolling average</td>
+                                        <td class="font-mono" id="sigSma50">—</td>
+                                        <td><span class="metric-badge badge-neutral" id="sigSma50Badge">N/A</span></td>
                                         <td class="text-secondary" id="sigSma50Action">-</td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-semibold text-white">Relative Strength Index (RSI)</td>
-                                        <td class="text-secondary">14-day relative gains/losses momentum</td>
-                                        <td id="sigRsi">0.00</td>
-                                        <td><span class="metric-badge" id="sigRsiBadge">N/A</span></td>
+                                        <td class="fw-semibold text-white">RSI (14)</td>
+                                        <td class="text-secondary">14-day momentum oscillator</td>
+                                        <td class="font-mono" id="sigRsi">—</td>
+                                        <td><span class="metric-badge badge-neutral" id="sigRsiBadge">N/A</span></td>
                                         <td class="text-secondary" id="sigRsiAction">-</td>
                                     </tr>
                                     <tr>
-                                        <td class="fw-semibold text-white">MACD Histogram Crossover</td>
-                                        <td class="text-secondary">EMA 12 vs EMA 26 MACD vs Signal (9)</td>
-                                        <td id="sigMacd">0.0000</td>
-                                        <td><span class="metric-badge" id="sigMacdBadge">N/A</span></td>
+                                        <td class="fw-semibold text-white">MACD Histogram</td>
+                                        <td class="text-secondary">EMA 12/26 vs Signal (9)</td>
+                                        <td class="font-mono" id="sigMacd">—</td>
+                                        <td><span class="metric-badge badge-neutral" id="sigMacdBadge">N/A</span></td>
                                         <td class="text-secondary" id="sigMacdAction">-</td>
                                     </tr>
                                     <tr>
                                         <td class="fw-semibold text-white">Rolling Volatility</td>
-                                        <td class="text-secondary">20-day price returns standard deviation</td>
-                                        <td id="sigVol">0.0%</td>
-                                        <td><span class="metric-badge" id="sigVolBadge">N/A</span></td>
+                                        <td class="text-secondary">20-day returns std. dev.</td>
+                                        <td class="font-mono" id="sigVol">—</td>
+                                        <td><span class="metric-badge badge-neutral" id="sigVolBadge">N/A</span></td>
                                         <td class="text-secondary" id="sigVolAction">-</td>
                                     </tr>
                                 </tbody>
@@ -301,4 +369,13 @@
 
 {% block extra_js %}
 <script src="{{ url_for('static', filename='js/chart_renderer.js') }}"></script>
+<script>
+// Activate chart tab buttons with visual feedback
+document.querySelectorAll('#chartTabBtns button').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('#chartTabBtns button').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+    });
+});
+</script>
 {% endblock %}

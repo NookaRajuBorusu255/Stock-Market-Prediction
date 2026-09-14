@@ -1,13 +1,24 @@
 import os
+import warnings
 from dotenv import load_dotenv
 
 load_dotenv()
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+_secret_key = os.getenv("SECRET_KEY")
+if not _secret_key:
+    warnings.warn(
+        "SECRET_KEY is not set in environment variables. "
+        "Using an insecure default key — DO NOT use this in production. "
+        "Set SECRET_KEY in your .env file.",
+        stacklevel=1,
+    )
+    _secret_key = "dev-secret-key-129847198274"
+
 class Config:
     # Security
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-129847198274")
+    SECRET_KEY = _secret_key
     
     # Database configuration
     # Can be easily switched to PostgreSQL by setting SQLALCHEMY_DATABASE_URI in .env

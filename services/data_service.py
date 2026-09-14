@@ -1,10 +1,16 @@
 import os
+import time
 import pandas as pd
 import numpy as np
 from config import Config
 
 # Cache for symbols to avoid scanning disk repeatedly
 _SYMBOL_CACHE = {}
+
+# Simple LRU-style in-memory cache for parsed+computed DataFrames
+# Keyed by symbol, stores (dataframe, mtime_of_file, cache_timestamp)
+_DATA_CACHE: dict = {}
+_CACHE_TTL_SECONDS = 300  # 5 minutes max staleness
 
 def list_available_symbols():
     """
@@ -68,34 +74,60 @@ def refresh_symbol_cache():
 def get_stock_data(symbol):
     """
     Loads stock data from file, parses date, computes technical indicators, and returns a DataFrame.
+    Results are cached in-memory for _CACHE_TTL_SECONDS or until the source file changes.
     """
     symbol = symbol.upper()
     symbols = list_available_symbols()
-    
+
     if symbol not in symbols:
         raise ValueError(f"Symbol '{symbol}' not found in database or uploads.")
-        
+
     filepath = symbols[symbol]['path']
-    
-    # Handle CSV vs TXT files robustly using helper function
+    now = time.time()
+
+    # Check in-memory cache — invalidate if file changed or TTL expired
+    if symbol in _DATA_CACHE:
+        cached_df, cached_mtime, cached_at = _DATA_CACHE[symbol]
+        try:
+            current_mtime = os.path.getmtime(filepath)
+        except OSError:
+            current_mtime = 0
+        if current_mtime == cached_mtime and (now - cached_at) < _CACHE_TTL_SECONDS:
+            return cached_df.copy()
+
+    # Parse from disk
     df = parse_and_standardize_csv(filepath)
-    
-    # Convert date to datetime
+
     if 'Date' in df.columns:
         df['Date'] = pd.to_datetime(df['Date'])
         df = df.sort_values('Date').reset_index(drop=True)
     else:
         raise ValueError("Dataset does not contain a 'Date' column.")
-        
-    # Check other required columns
+
     required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
     for col in required_cols:
         if col not in df.columns:
             raise ValueError(f"Dataset missing required column: {col}")
-            
-    # Calculate indicators
+
     df = compute_indicators(df)
-    return df
+
+    # Store in cache
+    try:
+        file_mtime = os.path.getmtime(filepath)
+    except OSError:
+        file_mtime = 0
+    _DATA_CACHE[symbol] = (df, file_mtime, now)
+
+    return df.copy()
+
+
+def invalidate_stock_cache(symbol: str | None = None):
+    """Clear cached parsed data — call after an upload replaces a symbol's file."""
+    global _DATA_CACHE
+    if symbol:
+        _DATA_CACHE.pop(symbol.upper(), None)
+    else:
+        _DATA_CACHE.clear()
 
 def compute_indicators(df):
     """
@@ -103,40 +135,42 @@ def compute_indicators(df):
     Assumes df has 'Close', 'Open', 'High', 'Low', 'Volume' and is sorted chronologically.
     """
     df = df.copy()
-    
+
     # 1. Simple Moving Averages (SMA)
-    df['SMA_20'] = df['Close'].rolling(window=20).mean()
-    df['SMA_50'] = df['Close'].rolling(window=50).mean()
+    df['SMA_20']  = df['Close'].rolling(window=20).mean()
+    df['SMA_50']  = df['Close'].rolling(window=50).mean()
     df['SMA_200'] = df['Close'].rolling(window=200).mean()
-    
+
     # 2. Exponential Moving Averages (EMA)
     df['EMA_12'] = df['Close'].ewm(span=12, adjust=False).mean()
     df['EMA_26'] = df['Close'].ewm(span=26, adjust=False).mean()
-    
-    # 3. Moving Average Convergence Divergence (MACD)
-    df['MACD'] = df['EMA_12'] - df['EMA_26']
+
+    # 3. MACD
+    df['MACD']        = df['EMA_12'] - df['EMA_26']
     df['MACD_Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
-    df['MACD_Hist'] = df['MACD'] - df['MACD_Signal']
-    
-    # 4. Relative Strength Index (RSI - 14 day)
-    delta = df['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).copy()
-    loss = (-delta.where(delta < 0, 0)).copy()
-    
-    # Standard Wilder's RSI smoothing or simple rolling
+    df['MACD_Hist']   = df['MACD'] - df['MACD_Signal']
+
+    # 4. RSI (14-day Wilder smoothing)
+    delta    = df['Close'].diff()
+    gain     = delta.where(delta > 0, 0.0)
+    loss     = (-delta.where(delta < 0, 0.0))
     avg_gain = gain.rolling(window=14).mean()
     avg_loss = loss.rolling(window=14).mean()
-    
-    rs = avg_gain / (avg_loss + 1e-10)
+    rs       = avg_gain / (avg_loss + 1e-10)
     df['RSI'] = 100 - (100 / (1 + rs))
-    
-    # 5. Volatility (Annualized 20-day rolling standard deviation of daily returns)
-    daily_returns = df['Close'].pct_change()
+
+    # 5. Annualized Volatility (20-day rolling σ of daily returns)
+    daily_returns  = df['Close'].pct_change()
     df['Volatility'] = daily_returns.rolling(window=20).std() * np.sqrt(252)
-    
-    # Clean up NaNs created by rolling indicators
-    # We do NOT drop them entirely here, as it might clip historical visual data,
-    # but the ML/DL pipeline will handle NaN cleaning.
+
+    # 6. Bollinger Bands (20-day, 2σ)
+    bb_mid          = df['Close'].rolling(window=20).mean()
+    bb_std          = df['Close'].rolling(window=20).std()
+    df['BB_Mid']    = bb_mid
+    df['BB_Upper']  = bb_mid + 2 * bb_std
+    df['BB_Lower']  = bb_mid - 2 * bb_std
+    df['BB_Width']  = (df['BB_Upper'] - df['BB_Lower']) / (bb_mid + 1e-10)  # normalised band width
+
     return df
 
 

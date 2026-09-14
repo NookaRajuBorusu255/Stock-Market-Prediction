@@ -1,7 +1,11 @@
 /**
- * Frontend Chart Renderer & State Manager
- * Handles data fetching, UI metrics binding, and Plotly layout configurations
+ * Frontend Chart Renderer & State Manager v2.0
+ * Handles data fetching, time range filtering, UI metrics binding, and Plotly layouts
  */
+
+// Global raw data cache for time-range filtering without re-fetch
+let _cachedStockData = null;
+let _activeRangeDays = 365; // default 1Y
 
 // Helper to count up/down numbers with premium styling glow triggers
 function animateNumber(element, targetVal, decimalPlaces = 2, prefix = '', suffix = '') {
@@ -39,6 +43,23 @@ function animateNumber(element, targetVal, decimalPlaces = 2, prefix = '', suffi
 document.addEventListener('DOMContentLoaded', function() {
     const symbolSelect = document.getElementById('symbolSelect');
     const downloadReportBtn = document.getElementById('downloadReportBtn');
+
+    // ── Time Range Filter Buttons ──
+    document.querySelectorAll('.time-range-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            _activeRangeDays = parseInt(this.getAttribute('data-range')) || 0;
+            if (_cachedStockData) {
+                const filtered = filterDataByRange(_cachedStockData, _activeRangeDays);
+                updateDashboardMetrics(filtered);
+                renderPriceChart(filtered);
+                renderIndicatorChart(filtered);
+                renderVolumeChart(filtered);
+                updateLastUpdateLabel(filtered);
+            }
+        });
+    });
     
     // Prediction DOM elements
     const predictBtn = document.getElementById('predictBtn');
@@ -134,17 +155,24 @@ document.addEventListener('DOMContentLoaded', function() {
     loadStockData(symbolSelect.value);
     downloadReportBtn.setAttribute('href', `/report/download/${symbolSelect.value}`);
 
+    // Update dashboard symbol label
+    const dashSymbolLabel = document.getElementById('dashSymbolLabel');
+    if (dashSymbolLabel) dashSymbolLabel.textContent = symbolSelect.value;
+
     // Bind event change on stock selection selector
     symbolSelect.addEventListener('change', function(e) {
         const symbol = e.target.value;
         localStorage.setItem('activeStockSymbol', symbol);
-        
+
+        // Update status label
+        if (dashSymbolLabel) dashSymbolLabel.textContent = symbol;
+
         // Hide previous prediction box
         predictionResultBox.classList.add('d-none');
-        
+
         // Update PDF report download link
         downloadReportBtn.setAttribute('href', `/report/download/${symbol}`);
-        
+
         // Load data
         loadStockData(symbol);
     });
@@ -260,29 +288,82 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Whether to show Bollinger Bands overlay (toggled by .bb-toggle-btn)
+    let _showBBands = false;
+
+    function filterDataByRange(data, days) {
+        if (!days || days === 0) return data; // 'All'
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+
+        const idx = data.dates.findIndex(d => d >= cutoffStr);
+        if (idx <= 0) return data;
+
+        const slice = (arr) => Array.isArray(arr) ? arr.slice(idx) : arr;
+        return {
+            dates:       slice(data.dates),
+            open:        slice(data.open),
+            high:        slice(data.high),
+            low:         slice(data.low),
+            close:       slice(data.close),
+            volume:      slice(data.volume),
+            sma20:       slice(data.sma20),
+            sma50:       slice(data.sma50),
+            sma200:      slice(data.sma200),
+            macd:        slice(data.macd),
+            macd_signal: slice(data.macd_signal),
+            macd_hist:   slice(data.macd_hist),
+            rsi:         slice(data.rsi),
+            volatility:  slice(data.volatility),
+            bb_upper:    slice(data.bb_upper),
+            bb_mid:      slice(data.bb_mid),
+            bb_lower:    slice(data.bb_lower)
+        };
+    }
+
+    function updateLastUpdateLabel(data) {
+        const el = document.getElementById('dashLastUpdate');
+        if (el && data.dates && data.dates.length > 0) {
+            el.textContent = `Last: ${data.dates[data.dates.length - 1]}`;
+        }
+    }
+
     function loadStockData(symbol) {
         // Update Chart Title Header
-        document.getElementById('chartHeaderTitle').innerHTML = `<i class="bi bi-graph-up me-2"></i>Historical Analysis - ${symbol}`;
-        
+        document.getElementById('chartHeaderTitle').innerHTML =
+            `<i class="bi bi-graph-up me-2 text-primary"></i>Historical Analysis — ${symbol}`;
+
         // Fetch Seaborn correlation heatmap
         loadStockHeatmap(symbol);
-        
+
+        // Add skeleton state to metric cards
+        document.querySelectorAll('.metric-value-update').forEach(el => {
+            el.innerHTML = '<span class="text-muted">—</span>';
+        });
+
         fetch(`/api/stock/${symbol}`)
         .then(response => response.json())
         .then(data => {
             if (data.error) {
                 console.error("Stock data error:", data.error);
-                alert("Could not load data for " + symbol);
                 return;
             }
-            
-            // 1. Bind Dashboard Cards Metrics
-            updateDashboardMetrics(data);
-            
+
+            // Cache full data
+            _cachedStockData = data;
+
+            // Apply active range filter
+            const filtered = filterDataByRange(data, _activeRangeDays);
+
+            // 1. Bind Dashboard Metrics
+            updateDashboardMetrics(filtered);
+
             // 2. Render Plots
-            renderPriceChart(data);
-            renderIndicatorChart(data);
-            renderVolumeChart(data);
+            renderPriceChart(filtered);
+            renderIndicatorChart(filtered);
+            renderVolumeChart(filtered);
+            updateLastUpdateLabel(filtered);
         })
         .catch(err => console.error("Error loading stock data API", err));
 
@@ -497,18 +578,34 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Wire BB toggle button
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.bb-toggle-btn');
+        if (!btn) return;
+        _showBBands = !_showBBands;
+        btn.classList.toggle('active', _showBBands);
+        btn.innerHTML = _showBBands
+            ? '<i class="bi bi-toggles me-1"></i>BB On'
+            : '<i class="bi bi-toggles me-1"></i>BB';
+        if (_cachedStockData) {
+            const filtered = filterDataByRange(_cachedStockData, _activeRangeDays);
+            renderPriceChart(filtered);
+        }
+    });
+
     function renderPriceChart(data) {
         const traceCandles = {
             x: data.dates,
             close: data.close,
-            decrease: { line: { color: '#f87171' } },
+            decrease: { line: { color: '#f87171' }, fillcolor: 'rgba(248,113,113,0.7)' },
             high: data.high,
-            increase: { line: { color: '#34d399' } },
+            increase: { line: { color: '#34d399' }, fillcolor: 'rgba(52,211,153,0.7)' },
             low: data.low,
             open: data.open,
             type: 'candlestick',
-            name: 'Candlesticks',
-            yaxis: 'y'
+            name: 'Price',
+            yaxis: 'y',
+            hoverinfo: 'x+y'
         };
 
         const traceSma20 = {
@@ -517,7 +614,8 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'scatter',
             mode: 'lines',
             line: { color: '#3b82f6', width: 1.5 },
-            name: 'SMA 20'
+            name: 'SMA 20',
+            hovertemplate: 'SMA 20: $%{y:.2f}<extra></extra>'
         };
 
         const traceSma50 = {
@@ -526,29 +624,109 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'scatter',
             mode: 'lines',
             line: { color: '#8b5cf6', width: 1.5 },
-            name: 'SMA 50'
+            name: 'SMA 50',
+            hovertemplate: 'SMA 50: $%{y:.2f}<extra></extra>'
         };
 
-        const plotData = [traceCandles, traceSma20, traceSma50];
+        const traceSma200 = {
+            x: data.dates,
+            y: data.sma200,
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: '#f59e0b', width: 1.5, dash: 'dot' },
+            name: 'SMA 200',
+            hovertemplate: 'SMA 200: $%{y:.2f}<extra></extra>'
+        };
+
+        const plotData = [traceCandles, traceSma20, traceSma50, traceSma200];
+
+        // Bollinger Bands overlay
+        if (_showBBands && data.bb_upper && data.bb_lower) {
+            // Shaded fill between upper and lower
+            plotData.push({
+                x: [...data.dates, ...data.dates.slice().reverse()],
+                y: [...data.bb_upper, ...data.bb_lower.slice().reverse()],
+                fill: 'toself',
+                fillcolor: 'rgba(99,102,241,0.07)',
+                line: { color: 'transparent' },
+                type: 'scatter',
+                mode: 'lines',
+                name: 'BB Band',
+                showlegend: false,
+                hoverinfo: 'skip'
+            });
+            plotData.push({
+                x: data.dates,
+                y: data.bb_upper,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: 'rgba(99,102,241,0.55)', width: 1, dash: 'dash' },
+                name: 'BB Upper',
+                hovertemplate: 'BB Upper: $%{y:.2f}<extra></extra>'
+            });
+            plotData.push({
+                x: data.dates,
+                y: data.bb_mid,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: 'rgba(99,102,241,0.8)', width: 1 },
+                name: 'BB Mid',
+                hovertemplate: 'BB Mid: $%{y:.2f}<extra></extra>'
+            });
+            plotData.push({
+                x: data.dates,
+                y: data.bb_lower,
+                type: 'scatter',
+                mode: 'lines',
+                line: { color: 'rgba(99,102,241,0.55)', width: 1, dash: 'dash' },
+                name: 'BB Lower',
+                hovertemplate: 'BB Lower: $%{y:.2f}<extra></extra>'
+            });
+        }
 
         const currentTemplate = getPlotlyTemplate();
         const layout = {
-            margin: { t: 30, r: 30, b: 30, l: 50 },
+            margin: { t: 30, r: 20, b: 40, l: 60 },
             xaxis: {
                 rangeslider: { visible: false },
                 type: 'date',
+                showspikes: true,
+                spikemode: 'across',
+                spikesnap: 'cursor',
+                spikecolor: 'rgba(255,255,255,0.2)',
+                spikedash: 'dot',
+                spikethickness: 1,
                 ...currentTemplate.layout.xaxis
             },
             yaxis: {
-                title: 'Stock Price ($)',
+                title: { text: 'Price ($)', font: { size: 11 } },
                 autorange: true,
+                showspikes: true,
+                spikemode: 'across',
+                spikesnap: 'cursor',
+                spikecolor: 'rgba(255,255,255,0.2)',
+                spikedash: 'dot',
+                spikethickness: 1,
+                tickprefix: '$',
                 ...currentTemplate.layout.yaxis
             },
-            legend: { orientation: 'h', y: 1.1, x: 0 },
+            legend: { orientation: 'h', y: 1.08, x: 0, font: { size: 11 } },
+            hovermode: 'x unified',
+            hoverlabel: {
+                bgcolor: 'rgba(15,23,42,0.92)',
+                bordercolor: 'rgba(99,102,241,0.4)',
+                font: { color: '#f8fafc', size: 12, family: 'JetBrains Mono, monospace' }
+            },
             ...currentTemplate.layout
         };
 
-        Plotly.newPlot('plotlyPriceChart', plotData, layout, { responsive: true, displayModeBar: false });
+        Plotly.newPlot('plotlyPriceChart', plotData, layout, {
+            responsive: true,
+            displayModeBar: true,
+            displaylogo: false,
+            modeBarButtonsToRemove: ['select2d', 'lasso2d', 'autoScale2d', 'hoverClosestCartesian', 'hoverCompareCartesian'],
+            toImageButtonOptions: { format: 'png', scale: 2 }
+        });
     }
 
     function renderIndicatorChart(data) {

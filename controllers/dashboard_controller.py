@@ -5,10 +5,11 @@ from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 
 from services.data_service import (
-    list_available_symbols, 
-    get_stock_data, 
+    list_available_symbols,
+    get_stock_data,
     refresh_symbol_cache,
-    parse_and_standardize_csv
+    parse_and_standardize_csv,
+    invalidate_stock_cache,
 )
 from database.database_helper import get_user_predictions
 from config import Config
@@ -50,22 +51,71 @@ def get_stock_json(symbol):
             df = df.iloc[-1000:]
             
         data_dict = {
-            'dates': df['Date'].dt.strftime('%Y-%m-%d').tolist(),
-            'open': df['Open'].tolist(),
-            'high': df['High'].tolist(),
-            'low': df['Low'].tolist(),
-            'close': df['Close'].tolist(),
-            'volume': df['Volume'].tolist(),
-            'sma20': df['SMA_20'].fillna(0).tolist(),
-            'sma50': df['SMA_50'].fillna(0).tolist(),
-            'sma200': df['SMA_200'].fillna(0).tolist(),
-            'macd': df['MACD'].fillna(0).tolist(),
-            'macd_signal': df['MACD_Signal'].fillna(0).tolist(),
-            'macd_hist': df['MACD_Hist'].fillna(0).tolist(),
-            'rsi': df['RSI'].fillna(50).tolist(),  # default to neutral RSI
-            'volatility': df['Volatility'].fillna(0).tolist()
+            'dates':      df['Date'].dt.strftime('%Y-%m-%d').tolist(),
+            'open':       df['Open'].tolist(),
+            'high':       df['High'].tolist(),
+            'low':        df['Low'].tolist(),
+            'close':      df['Close'].tolist(),
+            'volume':     df['Volume'].tolist(),
+            'sma20':      df['SMA_20'].fillna(0).tolist(),
+            'sma50':      df['SMA_50'].fillna(0).tolist(),
+            'sma200':     df['SMA_200'].fillna(0).tolist(),
+            'macd':       df['MACD'].fillna(0).tolist(),
+            'macd_signal':df['MACD_Signal'].fillna(0).tolist(),
+            'macd_hist':  df['MACD_Hist'].fillna(0).tolist(),
+            'rsi':        df['RSI'].fillna(50).tolist(),
+            'volatility': df['Volatility'].fillna(0).tolist(),
+            # Bollinger Bands
+            'bb_upper':   df['BB_Upper'].fillna(0).tolist(),
+            'bb_mid':     df['BB_Mid'].fillna(0).tolist(),
+            'bb_lower':   df['BB_Lower'].fillna(0).tolist(),
         }
         return jsonify(data_dict)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 404
+
+
+@dashboard_bp.route('/api/stock/<symbol>/summary')
+@login_required
+def get_stock_summary(symbol):
+    """
+    Returns a compact latest-row summary for fast metric card refresh.
+    Includes price, change, RSI, MACD state, SMA positions, volatility, BB width.
+    """
+    try:
+        df = get_stock_data(symbol)
+        last  = df.iloc[-1]
+        prev  = df.iloc[-2]
+
+        price       = float(last['Close'])
+        change      = float(last['Close'] - prev['Close'])
+        pct_change  = float(change / prev['Close'] * 100)
+        rsi         = float(last['RSI']) if not pd.isna(last['RSI']) else None
+        macd        = float(last['MACD']) if not pd.isna(last['MACD']) else None
+        macd_sig    = float(last['MACD_Signal']) if not pd.isna(last['MACD_Signal']) else None
+        sma20       = float(last['SMA_20']) if not pd.isna(last['SMA_20']) else None
+        sma50       = float(last['SMA_50']) if not pd.isna(last['SMA_50']) else None
+        volatility  = float(last['Volatility']) if not pd.isna(last['Volatility']) else None
+        bb_upper    = float(last['BB_Upper']) if not pd.isna(last['BB_Upper']) else None
+        bb_lower    = float(last['BB_Lower']) if not pd.isna(last['BB_Lower']) else None
+        bb_width    = float(last['BB_Width']) if not pd.isna(last['BB_Width']) else None
+
+        return jsonify({
+            'symbol':     symbol.upper(),
+            'price':      price,
+            'change':     change,
+            'pct_change': pct_change,
+            'rsi':        rsi,
+            'macd':       macd,
+            'macd_sig':   macd_sig,
+            'sma20':      sma20,
+            'sma50':      sma50,
+            'volatility': volatility,
+            'bb_upper':   bb_upper,
+            'bb_lower':   bb_lower,
+            'bb_width':   bb_width,
+            'last_date':  last['Date'].strftime('%Y-%m-%d'),
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 404
 
@@ -104,11 +154,12 @@ def upload_file():
                 return redirect(url_for('dashboard.index'))
                 
             # Overwrite the uploaded file with standardized comma-separated CSV format
-            # Ensure it is saved with clean standard layout
             df.to_csv(filepath, index=False)
-                
-            # Refresh local index cache
+
+            # Refresh symbol index + invalidate parsed data cache
             refresh_symbol_cache()
+            symbol_key = filename.split('.')[0].upper()
+            invalidate_stock_cache(symbol_key)
             symbol = filename.split('.')[0].upper()
             flash(f"File uploaded successfully! Symbol '{symbol}' is now active.", "success")
         except Exception as e:
@@ -124,11 +175,55 @@ def upload_file():
 @dashboard_bp.route('/profile')
 @login_required
 def profile():
-    """
-    Renders user profile dashboard containing historical prediction logs.
-    """
+    """Renders user profile with prediction history."""
     predictions = get_user_predictions(current_user.id)
     return render_template('profile.html', predictions=predictions)
+
+
+@dashboard_bp.route('/profile/export/csv')
+@login_required
+def export_predictions_csv():
+    """Streams user prediction history as a downloadable CSV."""
+    import io
+    import csv
+    from flask import Response
+
+    predictions = get_user_predictions(current_user.id)
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Symbol', 'Model', 'Target Date', 'Predicted Price',
+                     'Actual Price', 'Confidence %', 'Created At'])
+    for p in predictions:
+        writer.writerow([
+            p.stock_symbol,
+            p.model_name,
+            p.prediction_date.strftime('%Y-%m-%d'),
+            f'{p.predicted_price:.4f}',
+            f'{p.actual_price:.4f}' if p.actual_price is not None else '',
+            f'{p.confidence_score:.2f}',
+            p.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+        ])
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={'Content-Disposition':
+                 f'attachment; filename=predictions_{current_user.username}.csv'}
+    )
+
+
+@dashboard_bp.route('/profile/prediction/<int:pred_id>/delete', methods=['POST'])
+@login_required
+def delete_prediction(pred_id):
+    """Deletes a single prediction row owned by the current user."""
+    from database.models import PredictionHistory
+    from database import db
+    pred = db.session.get(PredictionHistory, pred_id)
+    if pred is None or pred.user_id != current_user.id:
+        return jsonify({'success': False, 'error': 'Not found'}), 404
+    db.session.delete(pred)
+    db.session.commit()
+    return jsonify({'success': True})
 
 @dashboard_bp.route('/api/sentiment/<symbol>')
 @login_required

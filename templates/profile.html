@@ -1,85 +1,155 @@
 {% extends "base.html" %}
 
-{% block title %}User Profile{% endblock %}
+{% block title %}Profile — {{ current_user.username }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <div class="glow-spot" style="top: 20%; left: 30%;"></div>
-        
-        <!-- User Metadata Card -->
-        <div class="glass-card mb-4">
-            <div class="d-flex flex-column flex-md-row align-items-center">
-                <div class="mb-3 mb-md-0 me-md-4">
-                    <div class="rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 80px; height: 80px; background: var(--primary-gradient);">
-                        <i class="bi bi-person-badge-fill fs-1"></i>
+        <div class="glow-spot" style="top: 10%; left: 25%; width: 280px; height: 280px;"></div>
+
+        <!-- Profile Header Card -->
+        <div class="glass-card mb-4 animate-slide-up">
+            <div class="d-flex flex-column flex-md-row align-items-center gap-4">
+                <!-- Avatar -->
+                <div class="position-relative flex-shrink-0">
+                    <div class="d-flex align-items-center justify-content-center rounded-circle text-white"
+                         style="width: 88px; height: 88px; background: var(--primary-gradient); box-shadow: 0 8px 24px rgba(99,102,241,0.4);">
+                        <i class="bi bi-person-badge-fill" style="font-size: 2.2rem;"></i>
                     </div>
+                    <span class="position-absolute bottom-0 end-0 rounded-circle"
+                          style="width: 18px; height: 18px; background: #34d399; border: 3px solid var(--bg-dark);"></span>
                 </div>
+
+                <!-- User Info -->
                 <div class="text-center text-md-start flex-grow-1">
-                    <h3 class="text-white m-0 font-outfit">{{ current_user.username }}</h3>
-                    <p class="text-secondary m-0 small"><i class="bi bi-envelope me-1"></i>{{ current_user.email }}</p>
-                    <p class="text-muted m-0 small" style="font-size: 0.8rem;">Member since: {{ current_user.created_at.strftime('%Y-%m-%d') }}</p>
+                    <h3 class="text-white m-0 fw-bold" style="font-family: 'Outfit', sans-serif;">{{ current_user.username }}</h3>
+                    <p class="text-secondary m-0" style="font-size: 0.88rem;">
+                        <i class="bi bi-envelope me-1"></i>{{ current_user.email }}
+                    </p>
+                    <p class="text-muted m-0 mt-1" style="font-size: 0.8rem;">
+                        <i class="bi bi-calendar3 me-1"></i>Member since {{ current_user.created_at.strftime('%B %d, %Y') }}
+                    </p>
                 </div>
-                <div class="mt-3 mt-md-0">
-                    <span class="badge px-3 py-2 rounded-pill fw-semibold" style="background: rgba(96, 165, 250, 0.1); border: 1px solid rgba(96, 165, 250, 0.25); color: #60a5fa;">
-                        <i class="bi bi-calculator me-1"></i>Total Predictions: {{ predictions|length }}
-                    </span>
+
+                <!-- Stats Summary -->
+                <div class="d-flex gap-3 flex-shrink-0">
+                    <div class="stat-card" style="min-width: 90px;">
+                        <div class="stat-value">{{ predictions|length }}</div>
+                        <div class="stat-label">Predictions</div>
+                    </div>
+                    <div class="stat-card" style="min-width: 90px;">
+                        {% set accurate = predictions | selectattr('confidence_score', 'gt', 75) | list | length %}
+                        <div class="stat-value" style="background: var(--accent-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            {{ accurate }}
+                        </div>
+                        <div class="stat-label">High Confidence</div>
+                    </div>
+                    <div class="stat-card" style="min-width: 90px;">
+                        {% set unique_symbols = predictions | map(attribute='stock_symbol') | unique | list | length %}
+                        <div class="stat-value" style="background: var(--gold-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                            {{ unique_symbols }}
+                        </div>
+                        <div class="stat-label">Symbols</div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Predictions History Table -->
-        <div class="glass-card">
+        <div class="glass-card animate-slide-up" style="animation-delay: 0.1s;">
             <div class="d-flex align-items-center justify-content-between mb-3">
-                <h5 class="m-0 text-white"><i class="bi bi-clock-history text-primary me-2"></i>Prediction History Log</h5>
-                <span class="text-muted small">Tracks predictions generated by the prediction engine</span>
+                <h5 class="m-0 text-white fw-bold">
+                    <i class="bi bi-clock-history text-primary me-2"></i>Prediction History
+                </h5>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="text-muted" style="font-size: 0.78rem;">{{ predictions|length }} records</span>
+                    {% if predictions %}
+                    <a href="{{ url_for('dashboard.export_predictions_csv') }}"
+                       class="btn btn-sm btn-glass rounded-pill px-3 py-1"
+                       style="font-size: 0.75rem;" title="Download all predictions as CSV">
+                        <i class="bi bi-download me-1"></i>Export CSV
+                    </a>
+                    {% endif %}
+                </div>
             </div>
-            
+
             <div class="table-responsive">
                 <table class="table table-glass text-start align-middle">
                     <thead>
                         <tr>
-                            <th>Stock</th>
-                            <th>Model Used</th>
+                            <th>Symbol</th>
+                            <th>Model</th>
                             <th>Target Date</th>
-                            <th>Predicted Price</th>
-                            <th>Actual Close</th>
+                            <th>Predicted</th>
+                            <th>Actual</th>
                             <th>Confidence</th>
-                            <th>Generated At</th>
+                            <th>Generated</th>
+                            <th style="width: 40px;"></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="predictionTableBody">
                         {% if predictions %}
                             {% for pred in predictions %}
-                                <tr>
-                                    <td class="fw-semibold text-white">{{ pred.stock_symbol }}</td>
-                                    <td><span class="badge rounded-pill px-2.5 py-1 text-secondary" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);">{{ pred.model_name }}</span></td>
-                                    <td class="text-secondary">{{ pred.prediction_date.strftime('%Y-%m-%d') }}</td>
-                                    <td class="text-info font-monospace font-weight-bold">${{ "%.2f"|format(pred.predicted_price) }}</td>
+                                <tr class="animate-fade-in" id="pred-row-{{ pred.id }}" style="transition: opacity 0.35s ease, transform 0.35s ease;">
+                                    <td>
+                                        <span class="fw-bold text-white" style="font-family: 'JetBrains Mono', monospace;">{{ pred.stock_symbol }}</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge rounded-pill px-2 py-1 text-secondary"
+                                              style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-glass); font-size: 0.73rem;">
+                                            {{ pred.model_name }}
+                                        </span>
+                                    </td>
+                                    <td class="text-secondary" style="font-size: 0.85rem;">{{ pred.prediction_date.strftime('%Y-%m-%d') }}</td>
+                                    <td style="font-family: 'JetBrains Mono', monospace; color: #93c5fd; font-size: 0.88rem; font-weight: 600;">
+                                        ${{ "%.2f"|format(pred.predicted_price) }}
+                                    </td>
                                     <td>
                                         {% if pred.actual_price is not none %}
-                                            <span class="text-white font-monospace">${{ "%.2f"|format(pred.actual_price) }}</span>
+                                            <span style="font-family: 'JetBrains Mono', monospace; color: #f1f5f9; font-size: 0.88rem;">
+                                                ${{ "%.2f"|format(pred.actual_price) }}
+                                            </span>
                                         {% else %}
-                                            <span class="small text-muted"><i class="bi bi-hourglass-split me-1"></i>Pending Close</span>
+                                            <span class="text-muted" style="font-size: 0.8rem;">
+                                                <i class="bi bi-hourglass-split me-1"></i>Pending
+                                            </span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if pred.confidence_score > 80 %}
-                                            <span class="text-success fw-bold">{{ "%.1f"|format(pred.confidence_score) }}%</span>
+                                            <span class="metric-badge badge-bullish" style="padding: 3px 10px; font-size: 0.73rem;">
+                                                {{ "%.1f"|format(pred.confidence_score) }}%
+                                            </span>
                                         {% elif pred.confidence_score > 60 %}
-                                            <span class="text-warning fw-bold">{{ "%.1f"|format(pred.confidence_score) }}%</span>
+                                            <span class="metric-badge badge-neutral" style="padding: 3px 10px; font-size: 0.73rem;">
+                                                {{ "%.1f"|format(pred.confidence_score) }}%
+                                            </span>
                                         {% else %}
-                                            <span class="text-danger fw-bold">{{ "%.1f"|format(pred.confidence_score) }}%</span>
+                                            <span class="metric-badge badge-bearish" style="padding: 3px 10px; font-size: 0.73rem;">
+                                                {{ "%.1f"|format(pred.confidence_score) }}%
+                                            </span>
                                         {% endif %}
                                     </td>
-                                    <td class="small text-muted">{{ pred.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td class="text-muted" style="font-size: 0.78rem;">{{ pred.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                    <td>
+                                        <button class="btn btn-sm delete-pred-btn"
+                                                data-pred-id="{{ pred.id }}"
+                                                style="padding: 3px 7px; background: transparent; border: 1px solid rgba(239,68,68,0.2); color: #f87171; border-radius: 6px; font-size: 0.7rem;"
+                                                title="Delete this prediction"
+                                                data-bs-toggle="tooltip">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
-                            <tr>
-                                <td colspan="7" class="text-center text-secondary small py-4">
-                                    <i class="bi bi-journal-x fs-3 d-block mb-2 text-muted"></i>
-                                    No predictions generated yet. Navigate to the dashboard to test models.
+                            <tr id="emptyPredRow">
+                                <td colspan="8" class="text-center py-5">
+                                    <i class="bi bi-journal-x d-block mb-2 text-muted" style="font-size: 2.5rem; opacity: 0.4;"></i>
+                                    <div class="text-secondary" style="font-size: 0.88rem;">No predictions yet.</div>
+                                    <div class="text-muted mt-1" style="font-size: 0.8rem;">
+                                        Go to the <a href="{{ url_for('dashboard.index') }}" class="text-primary text-decoration-none">dashboard</a> to generate your first prediction.
+                                    </div>
                                 </td>
                             </tr>
                         {% endif %}
@@ -89,4 +159,49 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Delete prediction row with fade-out animation
+document.querySelectorAll('.delete-pred-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const predId = this.getAttribute('data-pred-id');
+        const row = document.getElementById(`pred-row-${predId}`);
+        if (!row) return;
+
+        // Optimistic fade-out
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(20px)';
+
+        fetch(`/profile/prediction/${predId}/delete`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                setTimeout(() => {
+                    row.remove();
+                    const tbody = document.getElementById('predictionTableBody');
+                    if (tbody && tbody.querySelectorAll('tr[id^="pred-row-"]').length === 0) {
+                        tbody.innerHTML = `<tr id="emptyPredRow"><td colspan="8" class="text-center py-5">
+                            <i class="bi bi-journal-x d-block mb-2 text-muted" style="font-size: 2.5rem; opacity: 0.4;"></i>
+                            <div class="text-secondary" style="font-size:0.88rem;">No predictions yet.</div>
+                        </td></tr>`;
+                    }
+                }, 380);
+                if (typeof showToast === 'function') showToast('Prediction deleted.', 'info');
+            } else {
+                // Restore row on error
+                row.style.opacity = '1';
+                row.style.transform = '';
+                if (typeof showToast === 'function') showToast('Failed to delete: ' + data.error, 'error');
+            }
+        })
+        .catch(err => {
+            row.style.opacity = '1';
+            row.style.transform = '';
+            console.error(err);
+        });
+    });
+});
+</script>
 {% endblock %}

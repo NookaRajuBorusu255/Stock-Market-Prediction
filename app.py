@@ -64,8 +64,7 @@ app = create_app()
 
 if __name__ == '__main__':
     import socket
-    import os
-    
+
     # Get the local network IP address
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -86,4 +85,6 @@ if __name__ == '__main__':
         print("=" * 60 + "\n")
 
     # Run Flask server on 0.0.0.0 to listen on all interfaces
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Debug mode is controlled via the DEBUG environment variable (default: False)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() in ('1', 'true', 'yes')
+    app.run(host='0.0.0.0', port=5000, debug=debug_mode)
